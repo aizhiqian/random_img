@@ -3,7 +3,7 @@ name: Release Binary
 on:
   push:
     tags:
-      - 'v*' # 当推送类似 v1.0.0 的标签时触发
+      - 'v*'
 
 permissions:
   contents: write
@@ -29,7 +29,8 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: '1.23'
+        go-version-file: 'go.mod'
+        cache: false
 
     - name: Download dependencies
       run: |
