@@ -12,37 +12,49 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
+            height: 100%;
+            max-width: 1400px;
             background: white;
             border-radius: 15px;
-            padding: 30px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            padding: 20px;
+            margin: 0;
+            font-size: 2.2em;
+            flex-shrink: 0;
         }
 
         .controls {
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding: 20px;
+            padding: 15px 30px;
             background: #f8f9fa;
-            border-radius: 10px;
+            border-bottom: 1px solid #e9ecef;
+            flex-shrink: 0;
         }
 
         .control-group {
@@ -54,17 +66,18 @@
         label {
             font-weight: 600;
             color: #555;
+            font-size: 14px;
         }
 
-        select, input, button {
-            padding: 10px 15px;
+        select, button {
+            padding: 8px 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 14px;
             transition: all 0.3s;
         }
 
-        select:focus, input:focus {
+        select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -89,36 +102,37 @@
         }
 
         .preview-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 500px;
             background: #f8f9fa;
-            border-radius: 10px;
             padding: 20px;
             position: relative;
+            overflow: hidden;
         }
 
-        .preview-area img {
+        .preview-area img,
+        .preview-area video {
             max-width: 100%;
-            max-height: 600px;
+            max-height: 100%;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             object-fit: contain;
+            position: absolute;
         }
 
-        .preview-area video {
-            max-width: 100%;
-            max-height: 600px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        .preview-area img.hidden,
+        .preview-area video.hidden {
+            visibility: hidden;
         }
 
         .loading {
             font-size: 1.2em;
             color: #667eea;
             display: none;
+            position: absolute;
         }
 
         .loading.active {
@@ -126,12 +140,12 @@
         }
 
         .info {
-            margin-top: 20px;
-            padding: 15px;
+            padding: 15px 30px;
             background: white;
-            border-radius: 8px;
+            border-top: 1px solid #e9ecef;
             text-align: center;
             display: none;
+            flex-shrink: 0;
         }
 
         .info.active {
@@ -141,6 +155,7 @@
         .info p {
             margin: 5px 0;
             color: #555;
+            font-size: 14px;
         }
 
         .info a {
@@ -160,6 +175,8 @@
             border: 1px solid #f5c6cb;
             border-radius: 8px;
             display: none;
+            position: absolute;
+            max-width: 80%;
         }
 
         .error.active {
@@ -167,12 +184,42 @@
         }
 
         @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
+            body {
+                padding: 10px;
             }
 
             h1 {
-                font-size: 1.8em;
+                font-size: 1.6em;
+                padding: 15px;
+            }
+
+            .controls {
+                flex-direction: column;
+                padding: 10px 15px;
+                gap: 10px;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+
+            .control-group label {
+                min-width: 80px;
+            }
+
+            .control-group select,
+            .control-group button {
+                flex: 1;
+            }
+
+            .info {
+                padding: 10px 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.4em;
             }
         }
     </style>
@@ -203,6 +250,8 @@
         <div class="preview-area" id="previewArea">
             <div class="loading" id="loading">加载中...</div>
             <div class="error" id="error"></div>
+            <img id="previewImage" class="hidden" alt="预览图片">
+            <video id="previewVideo" class="hidden" controls></video>
         </div>
 
         <div class="info" id="info"></div>
@@ -211,10 +260,18 @@
     <script>
         let currentResource = null;
 
+        // 获取媒体元素引用
+        const previewImage = document.getElementById('previewImage');
+        const previewVideo = document.getElementById('previewVideo');
+
         // 页面加载时初始化
         window.onload = function() {
             loadCategories();
             document.getElementById('resourceType').addEventListener('change', loadCategories);
+
+            // 绑定错误处理
+            previewImage.onerror = () => showError('图片加载失败');
+            previewVideo.onerror = () => showError('视频加载失败');
         };
 
         // 加载分类列表
@@ -247,6 +304,10 @@
             hideError();
             hideInfo();
 
+            // 隐藏当前媒体
+            previewImage.classList.add('hidden');
+            previewVideo.classList.add('hidden');
+
             try {
                 const url = `/api/random/${type}?category=${category}`;
                 const response = await fetch(url);
@@ -260,7 +321,6 @@
                 displayResource();
             } catch (error) {
                 showError('加载失败: ' + error.message);
-            } finally {
                 showLoading(false);
             }
         }
@@ -269,26 +329,30 @@
         function displayResource() {
             if (!currentResource) return;
 
-            const previewArea = document.getElementById('previewArea');
             const type = document.getElementById('resourceType').value;
 
-            // 清空预览区域
-            previewArea.innerHTML = '';
+            // 暂停视频
+            previewVideo.pause();
 
-            // 创建媒体元素
+            // 隐藏所有媒体元素
+            previewImage.classList.add('hidden');
+            previewVideo.classList.add('hidden');
+
+            // 更新对应元素的 src 并显示
             if (type === 'image') {
-                const img = document.createElement('img');
-                img.src = currentResource.url;
-                img.alt = '预览图片';
-                img.onerror = () => showError('图片加载失败');
-                previewArea.appendChild(img);
+                previewImage.onload = () => {
+                    previewImage.classList.remove('hidden');
+                    showLoading(false);
+                };
+                previewImage.src = currentResource.url;
             } else {
-                const video = document.createElement('video');
-                video.src = currentResource.url;
-                video.controls = true;
-                video.autoplay = true;
-                video.onerror = () => showError('视频加载失败');
-                previewArea.appendChild(video);
+                previewVideo.onloadeddata = () => {
+                    previewVideo.classList.remove('hidden');
+                    showLoading(false);
+                };
+                previewVideo.src = currentResource.url;
+                previewVideo.load();
+                previewVideo.play();
             }
 
             // 显示信息
@@ -312,22 +376,29 @@
         // 显示/隐藏加载状态
         function showLoading(show) {
             const loading = document.getElementById('loading');
-            if (show) {
-                loading.classList.add('active');
-            } else {
-                loading.classList.remove('active');
+            if (loading) {
+                if (show) {
+                    loading.classList.add('active');
+                } else {
+                    loading.classList.remove('active');
+                }
             }
         }
 
         // 显示错误
         function showError(message) {
             const error = document.getElementById('error');
-            error.textContent = message;
-            error.classList.add('active');
+            if (error) {
+                error.textContent = message;
+                error.classList.add('active');
+            }
         }
 
         function hideError() {
-            document.getElementById('error').classList.remove('active');
+            const error = document.getElementById('error');
+            if (error) {
+                error.classList.remove('active');
+            }
         }
 
         // 键盘快捷键
