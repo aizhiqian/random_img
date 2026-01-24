@@ -155,7 +155,7 @@
 当你手动修改了 `data` 目录下的 txt 文件后，调用此接口刷新内存数据，无需重启服务。
 
 -   **接口地址**：`POST /admin/reload`
--   **请求头**：需要提供 `X-Admin-Token` 认证头
+-   **请求头**：需要提供 `X-Admin-Token` 认证头，默认为 `your-secret-admin-token`
 -   **响应示例**：
 
     ```json

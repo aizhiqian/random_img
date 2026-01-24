@@ -29,10 +29,8 @@ var (
     imageStore = make(map[string][]string)
     storeMutex sync.RWMutex // 读写锁
     dataDir    = "./data"   // 数据目录
+    adminToken string
 )
-
-// 管理员 Token (优先从环境变量读取)
-var adminToken = getEnvOrDefault("ADMIN_TOKEN", "your-secret-admin-token")
 
 // 获取环境变量，若为空则返回默认值
 func getEnvOrDefault(key, defaultValue string) string {
@@ -67,6 +65,7 @@ const apiDocHTML = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Random Image API - 文档</title>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <style>
         * {
             margin: 0;
@@ -271,19 +270,6 @@ const apiDocHTML = `<!DOCTYPE html>
         .tag.optional { background: #e0e7ff; color: #4f46e5; }
         .tag.auth { background: #fef3c7; color: #d97706; }
 
-        .footer {
-            text-align: center;
-            padding: 30px 20px;
-            color: #6b7280;
-            font-size: 0.9rem;
-            background: #f8fafc;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .footer a {
-            color: #4f46e5;
-        }
-
         @media (max-width: 768px) {
             .container { margin: 0; border-radius: 0; }
             .card { padding: 30px 20px; }
@@ -296,6 +282,24 @@ const apiDocHTML = `<!DOCTYPE html>
             .hero h1 { font-size: 1.75rem; }
             .card-header { flex-wrap: wrap; }
         }
+
+        .info-tip {
+            max-width: 900px;
+            margin: 0 auto 0 auto;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 16px 24px;
+            font-size: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #fde68a;
+            display: block;
+        }
+
+        .info-tip code {
+            background: #fde68a;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -304,6 +308,10 @@ const apiDocHTML = `<!DOCTYPE html>
             <h1>🖼️ Random Image API</h1>
             <p>轻量级随机图片服务，支持分类管理、批量获取、热重载，零数据库设计</p>
             <div class="badge">✨ Go + Gin | 高性能 | 跨域支持</div>
+        </div>
+
+        <div class="info-tip">
+            💡 数据存储于 <code>./data/*.txt</code> 文件，每行一个图片 URL，文件名即分类名
         </div>
 
         <div class="cards">
@@ -443,11 +451,14 @@ Location: https://example.com/cat123.jpg</code>
                 <p>重新加载 data 目录下的图片数据，无需重启服务</p>
                 <table class="params">
                     <tr><th>请求头</th><th>说明</th></tr>
-                    <tr><td><code>X-Admin-Token</code></td><td>管理员认证 Token</td></tr>
+                    <tr><td><code>X-Admin-Token</code></td><td>管理员认证 Token，默认为 <code>your-secret-admin-token</code></td></tr>
                 </table>
                 <div class="code-block">
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>curl -X POST -H "X-Admin-Token: your-token" /admin/reload</code>
+                    <code>curl -X POST -H "X-Admin-Token: your-secret-admin-token" /admin/reload
+或
+curl -X POST /admin/reload?token=your-secret-admin-token
+</code>
                 </div>
                 <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
                 <div class="code-block">
@@ -458,10 +469,6 @@ Location: https://example.com/cat123.jpg</code>
 }</code>
                 </div>
             </div>
-        </div>
-
-        <div class="footer">
-            <p>💡 数据存储于 <code>./data/*.txt</code> 文件，每行一个图片 URL，文件名即分类名</p>
         </div>
     </div>
 
@@ -479,12 +486,15 @@ Location: https://example.com/cat123.jpg</code>
 
 // 初始化
 func init() {
-    // 加载 .env 文件 (如果存在)
+    // 1. 加载 .env 文件 (如果存在)
     _ = godotenv.Load()
+
+    // 2. 读取环境变量
+    adminToken = getEnvOrDefault("ADMIN_TOKEN", "your-secret-admin-token")
 
     rand.Seed(time.Now().UnixNano())
 
-    // 确保数据目录存在
+    // 3. 确保数据目录存在
     if _, err := os.Stat(dataDir); os.IsNotExist(err) {
         os.MkdirAll(dataDir, 0755)
         fmt.Println("检测到 data 目录不存在，已自动创建。")
@@ -593,10 +603,13 @@ func main() {
     // 2. 设置 Gin 路由
     r := gin.Default()
 
-    // 3. 设置受信任的代理
+    // 3. 添加 favicon.ico 静态文件支持
+    r.StaticFile("/favicon.ico", "./favicon.ico")
+
+    // 4. 设置受信任的代理
     r.SetTrustedProxies([]string{"127.0.0.1"})
 
-    // 4. 允许跨域 (前端调用必备)
+    // 5. 允许跨域 (前端调用必备)
     r.Use(cors.Default())
 
     // --- 接口区域 ---
@@ -607,7 +620,7 @@ func main() {
         c.String(200, apiDocHTML)
     })
 
-    // 健康检查端点
+    // 接口 1: 健康检查端点
     r.GET("/health", func(c *gin.Context) {
         c.JSON(200, gin.H{
             "status":    "ok",
@@ -615,7 +628,7 @@ func main() {
         })
     })
 
-    // 统计信息端点
+    // 接口 2: 统计信息端点
     r.GET("/api/stats", func(c *gin.Context) {
         storeMutex.RLock()
         defer storeMutex.RUnlock()
@@ -635,7 +648,7 @@ func main() {
         })
     })
 
-    // 接口 1: 获取随机图片 (JSON)
+    // 接口 3: 获取随机图片 (JSON)
     // 用法: /api/random?category=cat&count=5
     r.GET("/api/random", func(c *gin.Context) {
         category := c.Query("category")
@@ -691,7 +704,7 @@ func main() {
         })
     })
 
-    // 接口 2: 图片重定向 (直接显示图片)
+    // 接口 4: 图片重定向 (直接显示图片)
     // 用法: /img?category=wallpaper
     r.GET("/img", func(c *gin.Context) {
         category := c.Query("category")
@@ -706,7 +719,7 @@ func main() {
         c.Redirect(302, url)
     })
 
-    // 接口 3: 查看所有分类
+    // 接口 5: 查看所有分类
     r.GET("/api/categories", func(c *gin.Context) {
         storeMutex.RLock()
         keys := make([]string, 0, len(imageStore))
@@ -725,7 +738,7 @@ func main() {
     admin := r.Group("/admin")
     admin.Use(authMiddleware())
     {
-        // 接口: 重载图片数据 (修改 txt 后调用)
+        // 接口 6: 重载图片数据 (修改 txt 后调用)
         admin.POST("/reload", func(c *gin.Context) {
             if err := loadImagesFromDisk(); err != nil {
                 c.JSON(500, gin.H{"success": false, "message": err.Error()})
