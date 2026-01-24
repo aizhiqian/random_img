@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Random Image API - 文档</title>
+    <title>Random Media API - 文档</title>
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <style>
         * {
@@ -296,20 +296,64 @@
 <body>
     <div class="container">
         <div class="hero">
-            <h1>🖼️ Random Image API</h1>
-            <p>轻量级随机图片服务，支持分类管理、批量获取、热重载，零数据库设计</p>
+            <h1>🖼️ Random Media API</h1>
+            <p>轻量级随机图片和视频服务，支持分类管理、批量获取、热重载，零数据库设计</p>
             <div class="badge">✨ Go + Gin | 高性能 | 跨域支持</div>
+            <div class="badge" style="margin-top: 10px; background: rgba(255, 255, 255, 0.3); cursor: pointer;" onclick="window.location.href='/preview'">
+                🎬 在线预览页面
+            </div>
         </div>
 
         <div class="info-tip">
-            💡 数据存储于 <code>./data/*.txt</code> 文件，每行一个图片 URL，文件名即分类名
+            💡 数据存储于 <code>./data/images/*.txt</code> 和 <code>./data/videos/*.txt</code> 文件，每行一个 URL，文件名即分类名
         </div>
 
         <div class="cards">
             <div class="card">
                 <div class="card-header">
                     <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/api/random" target="_blank">/api/random</a></span>
+                    <span class="endpoint"><a href="/preview" target="_blank">/preview</a></span>
+                </div>
+                <p>可视化在线预览界面，支持图片和视频的快速浏览与测试</p>
+                <table class="params">
+                    <tr>
+                        <th>功能</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td>资源类型切换</td>
+                        <td>支持图片和视频两种类型</td>
+                    </tr>
+                    <tr>
+                        <td>分类选择</td>
+                        <td>动态加载并选择分类</td>
+                    </tr>
+                    <tr>
+                        <td>随机加载</td>
+                        <td>一键获取随机资源</td>
+                    </tr>
+                    <tr>
+                        <td>键盘快捷键</td>
+                        <td>空格/R/N/→ 快速加载新资源</td>
+                    </tr>
+                </table>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>访问地址: http://your-domain.com/preview</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">使用场景：</p>
+                <ul style="margin-left: 20px; color: #6b7280; line-height: 1.8;">
+                    <li>快速测试 API 功能</li>
+                    <li>在线浏览图片/视频库</li>
+                    <li>向他人展示服务效果</li>
+                    <li>验证新添加的资源链接</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/random/image" target="_blank">/api/random/image</a></span>
                 </div>
                 <p>获取随机图片信息，支持指定分类和批量获取</p>
                 <table class="params">
@@ -331,7 +375,7 @@
                 </table>
                 <div class="code-block">
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>GET /api/random?category=wallpaper&count=2</code>
+                    <code>GET /api/random/image?category=wallpaper&count=2</code>
                 </div>
                 <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
                 <div class="code-block">
@@ -386,12 +430,12 @@ Location: https://example.com/cat123.jpg</code>
             <div class="card">
                 <div class="card-header">
                     <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/api/categories" target="_blank">/api/categories</a></span>
+                    <span class="endpoint"><a href="/api/categories/image" target="_blank">/api/categories/image</a></span>
                 </div>
                 <p>获取所有已加载的图片分类列表</p>
                 <div class="code-block">
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>GET /api/categories</code>
+                    <code>GET /api/categories/image</code>
                 </div>
                 <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
                 <div class="code-block">
@@ -422,12 +466,22 @@ Location: https://example.com/cat123.jpg</code>
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
                     <code>{
     "success": true,
-    "categories": 3,
-    "total_images": 250,
-    "details": {
-        "cat": 100,
-        "wallpaper": 120,
-        "anime": 30
+    "images": {
+        "categories": 3,
+        "total": 250,
+        "details": {
+            "cat": 100,
+            "wallpaper": 120,
+            "anime": 30
+        }
+    },
+    "videos": {
+        "categories": 2,
+        "total": 50,
+        "details": {
+            "movie": 30,
+            "music": 20
+        }
     }
 }</code>
                 </div>
@@ -455,12 +509,113 @@ Location: https://example.com/cat123.jpg</code>
 
             <div class="card">
                 <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/random/video" target="_blank">/api/random/video</a></span>
+                </div>
+                <p>获取随机视频信息，支持指定分类和批量获取</p>
+                <table class="params">
+                    <tr>
+                        <th>参数</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>category</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>分类名，留空或 "all" 随机分类</td>
+                    </tr>
+                    <tr>
+                        <td><code>count</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>数量 1-20，默认 1</td>
+                    </tr>
+                </table>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>GET /api/random/video?category=movie&count=2</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>{
+    "success": true,
+    "count": 2,
+    "videos": [
+        {
+            "url": "https://example.com/video/movie1.mp4",
+            "category": "movie"
+        },
+        {
+            "url": "https://example.com/video/movie2.mp4",
+            "category": "movie"
+        }
+    ]
+}</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/video" target="_blank">/video</a></span>
+                </div>
+                <p>302 重定向到随机视频 URL，可直接嵌入 &lt;video&gt; 标签</p>
+                <table class="params">
+                    <tr>
+                        <th>参数</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>category</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>分类名</td>
+                    </tr>
+                </table>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>&lt;video src="/video?category=movie" controls&gt;&lt;/video&gt;</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>HTTP/1.1 302 Found
+Location: https://example.com/video/movie123.mp4</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/categories/video" target="_blank">/api/categories/video</a></span>
+                </div>
+                <p>获取所有已加载的视频分类列表</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>GET /api/categories/video</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>{
+    "categories": [
+        "movie",
+        "music",
+        "funny"
+    ],
+    "count": 3
+}</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
                     <span class="method post">POST</span>
                     <span class="method get">GET</span>
                     <span class="endpoint"><a href="/admin/reload?token=your-secret-admin-token" target="_blank">/admin/reload</a></span>
                     <span class="tag auth">🔐 需认证</span>
                 </div>
-                <p>重新加载 data 目录下的图片数据,无需重启服务。支持 POST 和 GET 两种方式</p>
+                <p>重新加载 data/images 和 data/videos 目录下的数据,无需重启服务。支持 POST 和 GET 两种方式</p>
                 <table class="params">
                     <tr>
                         <th>认证方式</th>
@@ -489,7 +644,7 @@ curl /admin/reload?token=your-secret-admin-token
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
                     <code>{
     "success": true,
-    "message": "图片库已重新加载"
+    "message": "图片和视频库已重新加载"
 }</code>
                 </div>
             </div>

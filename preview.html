@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资源在线预览</title>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        select, input, button {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .preview-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .preview-area img {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            object-fit: contain;
+        }
+
+        .preview-area video {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .loading {
+            font-size: 1.2em;
+            color: #667eea;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+
+        .info.active {
+            display: block;
+        }
+
+        .info p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .info a {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .info a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 15px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 资源在线预览</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="resourceType">资源类型:</label>
+                <select id="resourceType">
+                    <option value="image">图片</option>
+                    <option value="video">视频</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="category">分类:</label>
+                <select id="category">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+
+            <button onclick="loadResource()">🎲 随机加载</button>
+        </div>
+
+        <div class="preview-area" id="previewArea">
+            <div class="loading" id="loading">加载中...</div>
+            <div class="error" id="error"></div>
+        </div>
+
+        <div class="info" id="info"></div>
+    </div>
+
+    <script>
+        let currentResource = null;
+
+        // 页面加载时初始化
+        window.onload = function() {
+            loadCategories();
+            document.getElementById('resourceType').addEventListener('change', loadCategories);
+        };
+
+        // 加载分类列表
+        async function loadCategories() {
+            const type = document.getElementById('resourceType').value;
+            const categorySelect = document.getElementById('category');
+
+            try {
+                const response = await fetch(`/api/categories/${type}`);
+                const data = await response.json();
+
+                categorySelect.innerHTML = '<option value="">全部</option>';
+                data.categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    categorySelect.appendChild(option);
+                });
+            } catch (error) {
+                showError('加载分类失败: ' + error.message);
+            }
+        }
+
+        // 加载资源
+        async function loadResource() {
+            const type = document.getElementById('resourceType').value;
+            const category = document.getElementById('category').value;
+
+            showLoading(true);
+            hideError();
+            hideInfo();
+
+            try {
+                const url = `/api/random/${type}?category=${category}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+
+                currentResource = {url: data.url, category: data.category};
+                displayResource();
+            } catch (error) {
+                showError('加载失败: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 显示资源
+        function displayResource() {
+            if (!currentResource) return;
+
+            const previewArea = document.getElementById('previewArea');
+            const type = document.getElementById('resourceType').value;
+
+            // 清空预览区域
+            previewArea.innerHTML = '';
+
+            // 创建媒体元素
+            if (type === 'image') {
+                const img = document.createElement('img');
+                img.src = currentResource.url;
+                img.alt = '预览图片';
+                img.onerror = () => showError('图片加载失败');
+                previewArea.appendChild(img);
+            } else {
+                const video = document.createElement('video');
+                video.src = currentResource.url;
+                video.controls = true;
+                video.autoplay = true;
+                video.onerror = () => showError('视频加载失败');
+                previewArea.appendChild(video);
+            }
+
+            // 显示信息
+            showInfo();
+        }
+
+        // 显示信息
+        function showInfo() {
+            const info = document.getElementById('info');
+            info.innerHTML = `
+                <p><strong>分类:</strong> ${currentResource.category}</p>
+                <p><strong>链接:</strong> <a href="${currentResource.url}" target="_blank">${currentResource.url}</a></p>
+            `;
+            info.classList.add('active');
+        }
+
+        function hideInfo() {
+            document.getElementById('info').classList.remove('active');
+        }
+
+        // 显示/隐藏加载状态
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('active');
+            } else {
+                loading.classList.remove('active');
+            }
+        }
+
+        // 显示错误
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('active');
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'r' || e.key === 'n' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                loadResource();
+            }
+        });
+    </script>
+</body>
+</html>
