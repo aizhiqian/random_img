@@ -152,11 +152,25 @@
 
 ### 6. 重新加载数据 (管理接口)
 
-当你手动修改了 `data` 目录下的 txt 文件后，调用此接口刷新内存数据，无需重启服务。
+当你手动修改了 `data` 目录下的 txt 文件后,调用此接口刷新内存数据,无需重启服务。
 
--   **接口地址**：`POST /admin/reload`
--   **请求头**：需要提供 `X-Admin-Token` 认证头，默认为 `your-secret-admin-token`
--   **响应示例**：
+-   **接口地址**:
+    -   `POST /admin/reload`
+    -   `GET /admin/reload`
+-   **认证方式**:
+    -   **方式 1**: 请求头 `X-Admin-Token`,默认为 `your-secret-admin-token`
+    -   **方式 2**: URL 参数 `token`
+-   **使用示例**:
+
+    ```bash
+    # 命令行 POST 方式
+    curl -X POST -H "X-Admin-Token: your-secret-admin-token" http://your-domain.com/admin/reload
+
+    # 命令行 GET 方式
+    curl http://your-domain.com/admin/reload?token=your-secret-admin-token
+    ```
+
+-   **响应示例**:
 
     ```json
     {
