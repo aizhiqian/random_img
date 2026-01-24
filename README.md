@@ -1,6 +1,6 @@
 <p align="center">
     <h1 align="center">Random Image API</h1>
-    <p align="center">轻量级、高性能、基于本地文件的随机图片 API 接口 🎉</p> 
+    <p align="center">轻量级、高性能、基于本地文件的随机图片 API 接口 🎉</p>
     <p align="center">
         <img src="https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go" alt="Go Version" />
         <a href="https://github.com/aizhiqian/random_img/tree/main?tab=MIT-1-ov-file" target="_blank" >
@@ -34,6 +34,7 @@
 -   🔄 **热重载**：支持运行时重新加载图片数据，无需重启整个服务。
 -   🌐 **多种模式**：支持 **JSON 数据返回** 和 **302 图片重定向** 两种模式。
 -   🎨 **分类支持**：自动读取文件名作为分类，支持按分类随机抽取。
+-   🔢 **批量获取**：支持一次获取 1-20 张随机图片。
 -   🛡️ **跨域支持**：内置 CORS 中间件，方便前端直接调用。
 
 ## 📚 API 文档
@@ -49,15 +50,38 @@
     | 参数名   | 类型   | 必填 | 说明                                   |
     | :------- | :----- | :--- | :------------------------------------- |
     | category | string | 否   | 指定分类名（如 `cat`），不传则全库随机 |
--   **返回示例**：
+    | count    | number | 否   | 获取数量 1-20，默认 1                  |
 
-```json
-{
-  "url": "https://example.com/cat1.jpg",
-  "category": "cat",
-  "success": true
-}
-```
+-   **单张图片响应**：
+    ```json
+    {
+        "url": "https://example.com/cat1.jpg",
+        "category": "cat",
+        "success": true
+    }
+    ```
+
+-   **多张图片响应** (count > 1)：
+    ```json
+    {
+        "success": true,
+        "count": 3,
+        "images": [
+            {
+                "url": "https://example.com/cat1.jpg",
+                "category": "cat"
+            },
+            {
+                "url": "https://example.com/cat2.jpg",
+                "category": "cat"
+            },
+            {
+                "url": "https://example.com/cat3.jpg",
+                "category": "cat"
+            }
+        ]
+    }
+    ```
 
 ### 2. 图片重定向 (直接展示)
 
@@ -68,9 +92,14 @@
     | 参数名   | 类型   | 必填 | 说明                         |
     | :------- | :----- | :--- | :--------------------------- |
     | category | string | 否   | 指定分类名（如 `wallpaper`） |
+-   **响应**：
+    ```
+    HTTP/1.1 302 Found
+    Location: https://example.com/wallpaper123.jpg
+    ```
 -   **使用方法**：
     ```html
-    <img src="http://your-domain.com/img?cat=wallpaper" />
+    <img src="http://your-domain.com/img?category=wallpaper" />
     ```
 
 ### 3. 获取所有分类
@@ -78,28 +107,63 @@
 获取当前系统中已加载的所有分类列表。
 
 -   **接口地址**：`GET /api/categories`
--   **返回示例**：
+-   **响应示例**：
 
-```json
-{
-  "categories": ["cat", "scenery", "anime"],
-  "count": 3
-}
-```
+    ```json
+    {
+        "categories": ["cat", "scenery", "anime"],
+        "count": 3
+    }
+    ```
 
-### 4. 重新加载数据
+### 4. 获取统计信息
+
+获取图片库的详细统计信息。
+
+-   **接口地址**：`GET /api/stats`
+-   **响应示例**：
+
+    ```json
+    {
+        "success": true,
+        "categories": 3,
+        "total_images": 250,
+        "details": {
+            "cat": 100,
+            "scenery": 120,
+            "anime": 30
+        }
+    }
+    ```
+
+### 5. 健康检查
+
+用于监控服务状态的健康检查端点。
+
+-   **接口地址**：`GET /health`
+-   **响应示例**：
+
+    ```json
+    {
+        "status": "ok",
+        "timestamp": "2024-01-01T12:00:00Z"
+    }
+    ```
+
+### 6. 重新加载数据 (管理接口)
 
 当你手动修改了 `data` 目录下的 txt 文件后，调用此接口刷新内存数据，无需重启服务。
 
 -   **接口地址**：`POST /admin/reload`
--   **返回示例**：
+-   **请求头**：需要提供 `X-Admin-Token` 认证头
+-   **响应示例**：
 
-```json
-{
-  "status": "success",
-  "message": "图片库已更新"
-}
-```
+    ```json
+    {
+        "success": true,
+        "message": "图片库已重新加载"
+    }
+    ```
 
 ---
 
@@ -146,6 +210,7 @@ GOOS=linux GOARCH=amd64 go build -o my-api main.go
 ### 在前端 JS 中调用
 
 ```javascript
+// 获取单张图片
 fetch('http://your-domain.com/api/random?category=cat')
   .then(response => response.json())
   .then(data => {
@@ -154,6 +219,30 @@ fetch('http://your-domain.com/api/random?category=cat')
       document.getElementById('my-img').src = data.url;
     }
   });
+
+// 获取多张图片
+fetch('http://your-domain.com/api/random?category=wallpaper&count=5')
+  .then(response => response.json())
+  .then(data => {
+    if(data.success) {
+      data.images.forEach((img, index) => {
+        console.log(`图片${index + 1}:`, img.url);
+      });
+    }
+  });
+```
+
+### 直接在 HTML 中使用
+
+```html
+<!-- 直接嵌入随机图片 -->
+<img src="http://your-domain.com/img?category=anime" alt="随机动漫图片" />
+
+<!-- 随机壁纸 -->
+<img src="http://your-domain.com/img?category=wallpaper" alt="随机壁纸" />
+
+<!-- 全库随机 -->
+<img src="http://your-domain.com/img" alt="随机图片" />
 ```
 
 ---
