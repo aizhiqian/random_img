@@ -183,39 +183,28 @@
 
 ## 🛠️ 宝塔面板部署指南
 
-本程序编译后为二进制文件，在 Linux 服务器上运行极其稳定，推荐配合宝塔面板的 **Supervisor管理器** 使用。
+本程序编译后为二进制文件，在 Linux 服务器上运行极其稳定。
 
-#### 第一步：本地编译 (Windows/Mac)
+#### 第一步：下载文件
 
-在你的本地电脑终端执行以下命令，生成 Linux 可执行文件：
-
-```bash
-# 设置编译目标为 Linux
-GOOS=linux GOARCH=amd64 go build -o my-api main.go
-```
-*(Windows 用户请使用 `set GOOS=linux` 等命令)*
+在 [Release](https://github.com/aizhiqian/random_img/releases/latest) 中下载对应平台的二进制文件，例如 `randimg-api-linux-amd64`
 
 #### 第二步：上传文件
 
 1.  在宝塔创建一个网站（目录如 `/www/wwwroot/api.yourdomain.com`）。
-2.  将生成的 `my-api` 文件和 `data` 文件夹上传至该目录。
-3.  **关键**：将 `my-api` 文件权限设置为 `755`。
+2.  将下载的 `randimg-api-linux-amd64、 data 文件夹、.env、favicon.ico、api_doc.html` 上传至该目录。
+3.  **关键**：将 `randimg-api-linux-amd64` 文件权限设置为 `755`。
 
-#### 第三步：配置进程守护
+#### 第三步：创建网站
 
-1.  宝塔软件商店搜索并安装 **Supervisor管理器**。
-2.  添加守护进程：
-    *   **名称**：`random-api`
-    *   **运行目录**：选择你的网站根目录
-    *   **启动命令**：`./my-api`
-3.  启动后，查看日志确认显示 `服务启动成功，监听端口 38719`。
+1.  宝塔面板依次点击 `网站→Go项目→添加项目`。
+2.  按下图配置
 
-#### 第四步：配置反向代理
+    ![](/img/Snipaste20260124-173221.png)
 
-1.  在网站设置 -> **反向代理** 中添加：
-    *   **代理名称**：随意
-    *   **目标URL**：`http://127.0.0.1:38719`
-2.  提交后，即可通过域名访问 API。
+3.  启动后，查看日志确认显示 `服务启动成功，监听端口 38719 ...`。
+
+    ![](/img/Snipaste20260124-174008.png)
 
 ---
 
