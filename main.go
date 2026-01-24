@@ -32,7 +32,7 @@ var (
 // 初始化
 func init() {
     rand.Seed(time.Now().UnixNano())
-    
+
     // 确保数据目录存在
     if _, err := os.Stat(dataDir); os.IsNotExist(err) {
         os.MkdirAll(dataDir, 0755)
@@ -130,6 +130,9 @@ func getRandomImage(category string) (string, string, error) {
 }
 
 func main() {
+    // 0. 开启发布模式 (关闭调试日志，提升性能)
+    gin.SetMode(gin.ReleaseMode)
+
     // 1. 启动时加载
     if err := loadImagesFromDisk(); err != nil {
         fmt.Printf("初始化失败: %v\n", err)
@@ -139,7 +142,10 @@ func main() {
     // 2. 设置 Gin 路由
     r := gin.Default()
 
-    // 3. 允许跨域 (前端调用必备)
+    // 3. 设置受信任的代理
+    r.SetTrustedProxies([]string{"127.0.0.1"})
+
+    // 4. 允许跨域 (前端调用必备)
     r.Use(cors.Default())
 
     // --- 接口区域 ---
@@ -188,7 +194,7 @@ func main() {
             keys = append(keys, k)
         }
         storeMutex.RUnlock()
-        
+
         c.JSON(200, gin.H{
             "categories": keys,
             "count":      len(keys),
