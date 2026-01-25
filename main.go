@@ -18,11 +18,13 @@ import (
 
 // 全局变量存储图片和视频数据
 var (
-    imageStore = make(map[string][]string)
-    videoStore = make(map[string][]string) // 视频存储
-    storeMutex sync.RWMutex                // 读写锁
-    imageDir   = "./data/images"           // 图片数据目录
-    videoDir   = "./data/videos"           // 视频数据目录
+    storeMutex sync.RWMutex                            // 读写锁
+    imageStore = make(map[string]map[string][]string) // category -> size -> []urls
+    videoStore = make(map[string]map[string][]string) // category -> size -> []urls
+    imageSizes = make(map[string]bool)                 // 可用的图片尺寸
+    videoSizes = make(map[string]bool)                 // 可用的视频尺寸
+    imageDir   = "./data/images"                       // 图片数据目录
+    videoDir   = "./data/videos"                       // 视频数据目录
     adminToken string
     apiDocHTML string
     previewHTML string
@@ -85,111 +87,166 @@ func loadPreviewPage() error {
 // ==================== 数据加载函数 ====================
 
 // 通用的从磁盘加载资源的函数
-func loadResourcesFromDisk(dataDir string, store *map[string][]string, resourceType string) error {
+func loadResourcesFromDisk(dataDir string, store *map[string]map[string][]string, sizes *map[string]bool, resourceType string) error {
     storeMutex.Lock()
     defer storeMutex.Unlock()
 
     // 1. 清空旧数据
-    *store = make(map[string][]string)
+    *store = make(map[string]map[string][]string)
+    *sizes = make(map[string]bool)
 
-    // 2. 读取目录
-    files, err := os.ReadDir(dataDir)
+    // 2. 读取尺寸目录
+    sizeEntries, err := os.ReadDir(dataDir)
     if err != nil {
         return fmt.Errorf("无法读取%s数据目录: %v", resourceType, err)
     }
 
-    count := 0
-    for _, file := range files {
-        if file.IsDir() || !strings.HasSuffix(file.Name(), ".txt") {
+    totalCount := 0
+    categoryCount := make(map[string]int)
+
+    // 3. 遍历每个尺寸文件夹
+    for _, sizeEntry := range sizeEntries {
+        if !sizeEntry.IsDir() {
             continue
         }
 
-        // 获取分类名
-        categoryName := strings.TrimSuffix(file.Name(), ".txt")
-        filePath := filepath.Join(dataDir, file.Name())
+        sizeName := sizeEntry.Name()
+        (*sizes)[sizeName] = true
+        sizeDir := filepath.Join(dataDir, sizeName)
 
-        // 3. 读取文件内容
-        f, err := os.Open(filePath)
+        // 4. 读取该尺寸下的分类文件
+        categoryFiles, err := os.ReadDir(sizeDir)
         if err != nil {
-            fmt.Printf("警告: 无法打开文件 %s, 错误: %v\n", file.Name(), err)
+            fmt.Printf("警告: 无法读取尺寸目录 %s, 错误: %v\n", sizeName, err)
             continue
         }
 
-        var urls []string
-        scanner := bufio.NewScanner(f)
-        for scanner.Scan() {
-            line := strings.TrimSpace(scanner.Text())
-            if line != "" {
-                urls = append(urls, line)
+        for _, file := range categoryFiles {
+            if file.IsDir() || !strings.HasSuffix(file.Name(), ".txt") {
+                continue
             }
-        }
-        f.Close()
 
-        // 4. 存入内存
-        if len(urls) > 0 {
-            (*store)[categoryName] = urls
-            count += len(urls)
-            fmt.Printf("加载成功: %s分类 [%s] 包含 %d 个资源\n", resourceType, categoryName, len(urls))
+            // 获取分类名
+            categoryName := strings.TrimSuffix(file.Name(), ".txt")
+            filePath := filepath.Join(sizeDir, file.Name())
+
+            // 5. 读取文件内容
+            f, err := os.Open(filePath)
+            if err != nil {
+                fmt.Printf("警告: 无法打开文件 %s/%s, 错误: %v\n", sizeName, file.Name(), err)
+                continue
+            }
+
+            var urls []string
+            scanner := bufio.NewScanner(f)
+            for scanner.Scan() {
+                line := strings.TrimSpace(scanner.Text())
+                if line != "" {
+                    urls = append(urls, line)
+                }
+            }
+            f.Close()
+
+            // 6. 存入内存（category -> size -> urls）
+            if len(urls) > 0 {
+                if (*store)[categoryName] == nil {
+                    (*store)[categoryName] = make(map[string][]string)
+                }
+                (*store)[categoryName][sizeName] = urls
+                totalCount += len(urls)
+                categoryCount[categoryName]++
+                fmt.Printf("加载成功: %s [%s/%s] 包含 %d 个资源\n", resourceType, categoryName, sizeName, len(urls))
+            }
         }
     }
 
-    fmt.Printf("%s初始化完成，共加载 %d 个分类，%d 个资源。\n", resourceType, len(*store), count)
+    fmt.Printf("%s初始化完成，共加载 %d 个分类，%d 种尺寸，%d 个资源。\n", resourceType, len(*store), len(*sizes), totalCount)
     return nil
 }
 
 // loadImagesFromDisk 加载图片
 func loadImagesFromDisk() error {
-    return loadResourcesFromDisk(imageDir, &imageStore, "图片")
+    return loadResourcesFromDisk(imageDir, &imageStore, &imageSizes, "图片")
 }
 
 // loadVideosFromDisk 加载视频
 func loadVideosFromDisk() error {
-    return loadResourcesFromDisk(videoDir, &videoStore, "视频")
+    return loadResourcesFromDisk(videoDir, &videoStore, &videoSizes, "视频")
 }
 
 // ==================== 业务逻辑函数 ====================
 
 // 通用的获取随机资源的函数
-func getRandomResource(category string, store map[string][]string, resourceType string) (string, string, error) {
+func getRandomResource(category string, size string, store map[string]map[string][]string, availableSizes map[string]bool, resourceType string) (string, string, string, error) {
     storeMutex.RLock()
     defer storeMutex.RUnlock()
 
     if len(store) == 0 {
-        return "", "", fmt.Errorf("%s库为空，请检查数据目录下是否有 txt 文件", resourceType)
+        return "", "", "", fmt.Errorf("%s库为空，请检查数据目录下是否有 txt 文件", resourceType)
+    }
+
+    // 验证 size 参数
+    if size != "" && size != "all" {
+        if !availableSizes[size] {
+            return "", "", "", fmt.Errorf("%s尺寸 '%s' 不存在", resourceType, size)
+        }
     }
 
     var targetCategory string
+    var targetSize string
     var urls []string
 
     // 处理分类逻辑
     if category == "" || category == "all" {
+        // 从所有分类中随机选择
         keys := make([]string, 0, len(store))
         for k := range store {
             keys = append(keys, k)
         }
         targetCategory = keys[rand.Intn(len(keys))]
-        urls = store[targetCategory]
     } else {
-        var ok bool
-        urls, ok = store[category]
-        if !ok || len(urls) == 0 {
-            return "", "", fmt.Errorf("%s分类 '%s' 不存在或为空", resourceType, category)
+        // 使用指定分类
+        if _, ok := store[category]; !ok {
+            return "", "", "", fmt.Errorf("%s分类 '%s' 不存在", resourceType, category)
         }
         targetCategory = category
     }
 
+    // 处理尺寸逻辑
+    categoryData := store[targetCategory]
+    if size == "" || size == "all" {
+        // 从该分类的所有尺寸中随机选择
+        sizeKeys := make([]string, 0, len(categoryData))
+        for k := range categoryData {
+            sizeKeys = append(sizeKeys, k)
+        }
+        if len(sizeKeys) == 0 {
+            return "", "", "", fmt.Errorf("%s分类 '%s' 下没有任何尺寸数据", resourceType, targetCategory)
+        }
+        targetSize = sizeKeys[rand.Intn(len(sizeKeys))]
+        urls = categoryData[targetSize]
+    } else {
+        // 使用指定尺寸
+        var ok bool
+        urls, ok = categoryData[size]
+        if !ok || len(urls) == 0 {
+            return "", "", "", fmt.Errorf("%s分类 '%s' 下不存在尺寸 '%s' 或为空", resourceType, targetCategory, size)
+        }
+        targetSize = size
+    }
+
     randomUrl := urls[rand.Intn(len(urls))]
-    return randomUrl, targetCategory, nil
+    return randomUrl, targetCategory, targetSize, nil
 }
 
 // getRandomImage 获取随机图片
-func getRandomImage(category string) (string, string, error) {
-    return getRandomResource(category, imageStore, "图片")
+func getRandomImage(category string, size string) (string, string, string, error) {
+    return getRandomResource(category, size, imageStore, imageSizes, "图片")
 }
 
 // getRandomVideo 获取随机视频
-func getRandomVideo(category string) (string, string, error) {
-    return getRandomResource(category, videoStore, "视频")
+func getRandomVideo(category string, size string) (string, string, string, error) {
+    return getRandomResource(category, size, videoStore, videoSizes, "视频")
 }
 
 // ==================== HTTP 处理器函数 ====================
@@ -213,8 +270,9 @@ func authMiddleware() gin.HandlerFunc {
 }
 
 // 通用的处理随机资源 API 的函数
-func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string) (string, string, error), resourceName string) {
+func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string, string) (string, string, string, error), resourceName string) {
     category := c.Query("category")
+    size := c.Query("size")
     countStr := c.DefaultQuery("count", "1")
 
     count, err := strconv.Atoi(countStr)
@@ -227,7 +285,7 @@ func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string) (strin
 
     // 单个资源 - 保持简洁响应格式
     if count == 1 {
-        url, cat, err := getResourceFunc(category)
+        url, cat, sz, err := getResourceFunc(category, size)
         if err != nil {
             c.JSON(404, gin.H{
                 "success": false,
@@ -239,6 +297,7 @@ func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string) (strin
         response := gin.H{
             "url":      url,
             "category": cat,
+            "size":     sz,
             "success":  true,
         }
 
@@ -249,7 +308,7 @@ func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string) (strin
     // 多个资源 - 返回数组格式
     var resources []gin.H
     for i := 0; i < count; i++ {
-        url, cat, err := getResourceFunc(category)
+        url, cat, sz, err := getResourceFunc(category, size)
         if err != nil {
             c.JSON(404, gin.H{
                 "success": false,
@@ -260,6 +319,7 @@ func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string) (strin
         resources = append(resources, gin.H{
             "url":      url,
             "category": cat,
+            "size":     sz,
         })
     }
 
@@ -271,10 +331,11 @@ func handleRandomResourceAPI(c *gin.Context, getResourceFunc func(string) (strin
 }
 
 // 通用的重定向处理函数
-func handleResourceRedirect(c *gin.Context, getResourceFunc func(string) (string, string, error), resourceType string) {
+func handleResourceRedirect(c *gin.Context, getResourceFunc func(string, string) (string, string, string, error), resourceType string) {
     category := c.Query("category")
+    size := c.Query("size")
 
-    url, _, err := getResourceFunc(category)
+    url, _, _, err := getResourceFunc(category, size)
     if err != nil {
         c.String(404, "%s未找到: %v", resourceType, err)
         return
@@ -284,7 +345,7 @@ func handleResourceRedirect(c *gin.Context, getResourceFunc func(string) (string
 }
 
 // 通用的获取分类列表函数
-func handleCategoriesAPI(c *gin.Context, store map[string][]string) {
+func handleCategoriesAPI(c *gin.Context, store map[string]map[string][]string) {
     storeMutex.RLock()
     keys := make([]string, 0, len(store))
     for k := range store {
@@ -295,6 +356,21 @@ func handleCategoriesAPI(c *gin.Context, store map[string][]string) {
     c.JSON(200, gin.H{
         "categories": keys,
         "count":      len(keys),
+    })
+}
+
+// 通用的获取尺寸列表函数
+func handleSizesAPI(c *gin.Context, sizes map[string]bool) {
+    storeMutex.RLock()
+    keys := make([]string, 0, len(sizes))
+    for k := range sizes {
+        keys = append(keys, k)
+    }
+    storeMutex.RUnlock()
+
+    c.JSON(200, gin.H{
+        "sizes": keys,
+        "count": len(keys),
     })
 }
 
@@ -363,74 +439,96 @@ func main() {
         storeMutex.RLock()
         defer storeMutex.RUnlock()
 
+        // 统计图片
         totalImages := 0
-        imageDetails := make(map[string]int)
-        for category, urls := range imageStore {
-            imageDetails[category] = len(urls)
-            totalImages += len(urls)
+        imageDetails := make(map[string]map[string]int) // category -> size -> count
+        for category, sizeMap := range imageStore {
+            imageDetails[category] = make(map[string]int)
+            for size, urls := range sizeMap {
+                count := len(urls)
+                imageDetails[category][size] = count
+                totalImages += count
+            }
         }
 
+        // 统计视频
         totalVideos := 0
-        videoDetails := make(map[string]int)
-        for category, urls := range videoStore {
-            videoDetails[category] = len(urls)
-            totalVideos += len(urls)
+        videoDetails := make(map[string]map[string]int) // category -> size -> count
+        for category, sizeMap := range videoStore {
+            videoDetails[category] = make(map[string]int)
+            for size, urls := range sizeMap {
+                count := len(urls)
+                videoDetails[category][size] = count
+                totalVideos += count
+            }
         }
 
         c.JSON(200, gin.H{
             "success": true,
             "images": gin.H{
                 "categories": len(imageStore),
+                "sizes":      len(imageSizes),
                 "total":      totalImages,
                 "details":    imageDetails,
             },
             "videos": gin.H{
                 "categories": len(videoStore),
+                "sizes":      len(videoSizes),
                 "total":      totalVideos,
                 "details":    videoDetails,
             },
         })
     })
 
-    // 接口 4: 获取随机图片 (JSON)
+    // 接口 4.1: 获取随机图片 (JSON)
     // 用法: /api/random/image?category=cat&count=5
     r.GET("/api/random/image", func(c *gin.Context) {
         handleRandomResourceAPI(c, getRandomImage, "images")
     })
 
-    // 接口 5: 图片重定向 (直接显示图片)
+    // 接口 4.2: 图片重定向 (直接显示图片)
     // 用法: /img?category=wallpaper
     r.GET("/img", func(c *gin.Context) {
         handleResourceRedirect(c, getRandomImage, "图片")
     })
 
-    // 接口 6: 查看所有图片分类
+    // 接口 4.3: 查看所有图片分类
     r.GET("/api/categories/image", func(c *gin.Context) {
         handleCategoriesAPI(c, imageStore)
     })
 
-    // 接口 7: 获取随机视频 (JSON)
+    // 接口 4.4: 查看所有图片尺寸
+    r.GET("/api/sizes/image", func(c *gin.Context) {
+        handleSizesAPI(c, imageSizes)
+    })
+
+    // 接口 5.1: 获取随机视频 (JSON)
     // 用法: /api/random/video?category=movie&count=3
     r.GET("/api/random/video", func(c *gin.Context) {
         handleRandomResourceAPI(c, getRandomVideo, "videos")
     })
 
-    // 接口 8: 视频重定向 (直接展示视频)
+    // 接口 5.2: 视频重定向 (直接展示视频)
     // 用法: /video?category=movie
     r.GET("/video", func(c *gin.Context) {
         handleResourceRedirect(c, getRandomVideo, "视频")
     })
 
-    // 接口 9: 查看所有视频分类
+    // 接口 5.3: 查看所有视频分类
     r.GET("/api/categories/video", func(c *gin.Context) {
         handleCategoriesAPI(c, videoStore)
+    })
+
+    // 接口 5.4: 查看所有视频尺寸
+    r.GET("/api/sizes/video", func(c *gin.Context) {
+        handleSizesAPI(c, videoSizes)
     })
 
     // 管理接口 (需要认证)
     admin := r.Group("/admin")
     admin.Use(authMiddleware())
     {
-        // 接口 10: 重载图片和视频数据 (修改 txt 后调用)
+        // 接口 6: 重载图片和视频数据 (修改 txt 后调用)
         // 支持 POST 和 GET 方法，方便浏览器直接访问
         reloadHandler := func(c *gin.Context) {
             errImg := loadImagesFromDisk()

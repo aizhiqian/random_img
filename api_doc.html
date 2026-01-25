@@ -299,13 +299,15 @@
             <h1>🖼️ Random Media API</h1>
             <p>轻量级随机图片和视频服务，支持分类管理、批量获取、热重载，零数据库设计</p>
             <div class="badge">✨ Go + Gin | 高性能 | 跨域支持</div>
-            <div class="badge" style="margin-top: 10px; background: rgba(255, 255, 255, 0.3); cursor: pointer;" onclick="window.location.href='/preview'">
+            <div class="badge" style="margin-top: 10px; background: rgba(255, 255, 255, 0.3); cursor: pointer;"
+                onclick="window.location.href='/preview'">
                 🎬 在线预览页面
             </div>
         </div>
 
         <div class="info-tip">
-            💡 数据存储于 <code>./data/images/*.txt</code> 和 <code>./data/videos/*.txt</code> 文件，每行一个 URL，文件名即分类名
+            💡 数据存储于 <code>./data/{type}/{size}/{category}.txt</code> 文件（如
+            <code>./data/images/pc/nature.txt</code>），每行一个 URL
         </div>
 
         <div class="cards">
@@ -355,7 +357,7 @@
                     <span class="method get">GET</span>
                     <span class="endpoint"><a href="/api/random/image" target="_blank">/api/random/image</a></span>
                 </div>
-                <p>获取随机图片信息，支持指定分类和批量获取</p>
+                <p>获取随机图片信息，支持指定分类、尺寸和批量获取</p>
                 <table class="params">
                     <tr>
                         <th>参数</th>
@@ -368,6 +370,11 @@
                         <td>分类名，留空或 "all" 随机分类</td>
                     </tr>
                     <tr>
+                        <td><code>size</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>尺寸类型（如 pc、phone、square），留空或 "all" 随机尺寸</td>
+                    </tr>
+                    <tr>
                         <td><code>count</code></td>
                         <td><span class="tag optional">可选</span></td>
                         <td>数量 1-20，默认 1</td>
@@ -375,7 +382,7 @@
                 </table>
                 <div class="code-block">
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>GET /api/random/image?category=wallpaper&count=2</code>
+                    <code>GET /api/random/image?category=wallpaper&size=pc&count=2</code>
                 </div>
                 <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
                 <div class="code-block">
@@ -386,11 +393,13 @@
     "images": [
         {
             "url": "https://example.com/wallpaper1.jpg",
-            "category": "wallpaper"
+            "category": "wallpaper",
+            "size": "pc"
         },
         {
             "url": "https://example.com/wallpaper2.jpg",
-            "category": "wallpaper"
+            "category": "wallpaper",
+            "size": "pc"
         }
     ]
 }</code>
@@ -414,10 +423,15 @@
                         <td><span class="tag optional">可选</span></td>
                         <td>分类名</td>
                     </tr>
+                    <tr>
+                        <td><code>size</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>尺寸类型</td>
+                    </tr>
                 </table>
                 <div class="code-block">
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>&lt;img src="/img?category=cat" alt="随机图片"&gt;</code>
+                    <code>&lt;img src="/img?category=cat&size=phone" alt="随机图片"&gt;</code>
                 </div>
                 <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应：</p>
                 <div class="code-block">
@@ -430,7 +444,8 @@ Location: https://example.com/cat123.jpg</code>
             <div class="card">
                 <div class="card-header">
                     <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/api/categories/image" target="_blank">/api/categories/image</a></span>
+                    <span class="endpoint"><a href="/api/categories/image"
+                            target="_blank">/api/categories/image</a></span>
                 </div>
                 <p>获取所有已加载的图片分类列表</p>
                 <div class="code-block">
@@ -454,6 +469,167 @@ Location: https://example.com/cat123.jpg</code>
             <div class="card">
                 <div class="card-header">
                     <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/sizes/image" target="_blank">/api/sizes/image</a></span>
+                </div>
+                <p>获取所有已加载的图片尺寸类型列表</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>GET /api/sizes/image</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>{
+    "sizes": [
+        "pc",
+        "phone",
+        "square"
+    ],
+    "count": 3
+}</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/random/video" target="_blank">/api/random/video</a></span>
+                </div>
+                <p>获取随机视频信息，支持指定分类、尺寸和批量获取</p>
+                <table class="params">
+                    <tr>
+                        <th>参数</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>category</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>分类名，留空或 "all" 随机分类</td>
+                    </tr>
+                    <tr>
+                        <td><code>size</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>尺寸类型（如 pc、phone），留空或 "all" 随机尺寸</td>
+                    </tr>
+                    <tr>
+                        <td><code>count</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>数量 1-20，默认 1</td>
+                    </tr>
+                </table>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>GET /api/random/video?category=movie&size=pc&count=2</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>{
+                        "success": true,
+                        "count": 2,
+                        "videos": [
+                        {
+                            "url": "https://example.com/video/movie1.mp4",
+                            "category": "movie",
+                            "size": "pc"
+                        },
+                        {
+                            "url": "https://example.com/video/movie2.mp4",
+                            "category": "movie",
+                            "size": "pc"
+                        }
+                        ]
+                    }</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/video" target="_blank">/video</a></span>
+                </div>
+                <p>302 重定向到随机视频 URL，可直接嵌入 &lt;video&gt; 标签</p>
+                <table class="params">
+                    <tr>
+                        <th>参数</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>category</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>分类名</td>
+                    </tr>
+                    <tr>
+                        <td><code>size</code></td>
+                        <td><span class="tag optional">可选</span></td>
+                        <td>尺寸类型</td>
+                    </tr>
+                </table>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>&lt;video src="/video?category=movie&size=phone" controls&gt;&lt;/video&gt;</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>HTTP/1.1 302 Found
+                        Location: https://example.com/video/movie123.mp4</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/categories/video"
+                            target="_blank">/api/categories/video</a></span>
+                </div>
+                <p>获取所有已加载的视频分类列表</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>GET /api/categories/video</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>{
+                            "categories": [
+                            "movie",
+                            "music",
+        "funny"
+        ],
+        "count": 3
+    }</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint"><a href="/api/sizes/video" target="_blank">/api/sizes/video</a></span>
+                </div>
+                <p>获取所有已加载的视频尺寸类型列表</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>GET /api/sizes/video</code>
+                </div>
+                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <code>{
+            "sizes": [
+            "pc",
+            "phone"
+            ],
+            "count": 2
+        }</code>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="method get">GET</span>
                     <span class="endpoint"><a href="/api/stats" target="_blank">/api/stats</a></span>
                 </div>
                 <p>获取图片库统计信息，包括分类数量和图片总数</p>
@@ -468,19 +644,32 @@ Location: https://example.com/cat123.jpg</code>
     "success": true,
     "images": {
         "categories": 3,
+        "sizes": 2,
         "total": 250,
         "details": {
-            "cat": 100,
-            "wallpaper": 120,
-            "anime": 30
+            "cat": {
+                "pc": 50,
+                "phone": 50
+            },
+            "wallpaper": {
+                "pc": 120
+            },
+            "anime": {
+                "pc": 30
+            }
         }
     },
     "videos": {
         "categories": 2,
+        "sizes": 1,
         "total": 50,
         "details": {
-            "movie": 30,
-            "music": 20
+            "movie": {
+                "pc": 30
+            },
+            "music": {
+                "pc": 20
+            }
         }
     }
 }</code>
@@ -509,110 +698,10 @@ Location: https://example.com/cat123.jpg</code>
 
             <div class="card">
                 <div class="card-header">
-                    <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/api/random/video" target="_blank">/api/random/video</a></span>
-                </div>
-                <p>获取随机视频信息，支持指定分类和批量获取</p>
-                <table class="params">
-                    <tr>
-                        <th>参数</th>
-                        <th>类型</th>
-                        <th>说明</th>
-                    </tr>
-                    <tr>
-                        <td><code>category</code></td>
-                        <td><span class="tag optional">可选</span></td>
-                        <td>分类名，留空或 "all" 随机分类</td>
-                    </tr>
-                    <tr>
-                        <td><code>count</code></td>
-                        <td><span class="tag optional">可选</span></td>
-                        <td>数量 1-20，默认 1</td>
-                    </tr>
-                </table>
-                <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>GET /api/random/video?category=movie&count=2</code>
-                </div>
-                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
-                <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>{
-    "success": true,
-    "count": 2,
-    "videos": [
-        {
-            "url": "https://example.com/video/movie1.mp4",
-            "category": "movie"
-        },
-        {
-            "url": "https://example.com/video/movie2.mp4",
-            "category": "movie"
-        }
-    ]
-}</code>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/video" target="_blank">/video</a></span>
-                </div>
-                <p>302 重定向到随机视频 URL，可直接嵌入 &lt;video&gt; 标签</p>
-                <table class="params">
-                    <tr>
-                        <th>参数</th>
-                        <th>类型</th>
-                        <th>说明</th>
-                    </tr>
-                    <tr>
-                        <td><code>category</code></td>
-                        <td><span class="tag optional">可选</span></td>
-                        <td>分类名</td>
-                    </tr>
-                </table>
-                <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>&lt;video src="/video?category=movie" controls&gt;&lt;/video&gt;</code>
-                </div>
-                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应：</p>
-                <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>HTTP/1.1 302 Found
-Location: https://example.com/video/movie123.mp4</code>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/api/categories/video" target="_blank">/api/categories/video</a></span>
-                </div>
-                <p>获取所有已加载的视频分类列表</p>
-                <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>GET /api/categories/video</code>
-                </div>
-                <p style="margin-top: 20px; color: #374151; font-weight: 600;">响应示例：</p>
-                <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
-                    <code>{
-    "categories": [
-        "movie",
-        "music",
-        "funny"
-    ],
-    "count": 3
-}</code>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
                     <span class="method post">POST</span>
                     <span class="method get">GET</span>
-                    <span class="endpoint"><a href="/admin/reload?token=your-secret-admin-token" target="_blank">/admin/reload</a></span>
+                    <span class="endpoint"><a href="/admin/reload?token=your-secret-admin-token"
+                            target="_blank">/admin/reload</a></span>
                     <span class="tag auth">🔐 需认证</span>
                 </div>
                 <p>重新加载 data/images 和 data/videos 目录下的数据,无需重启服务。支持 POST 和 GET 两种方式</p>

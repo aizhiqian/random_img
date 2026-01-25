@@ -34,6 +34,7 @@
 -   🔄 **热重载**：支持运行时重新加载图片和视频数据，无需重启整个服务。
 -   🌐 **多种模式**：支持 **JSON 数据返回** 和 **302 重定向** 两种模式。
 -   🎨 **分类支持**：自动读取文件名作为分类，支持按分类随机抽取。
+-   📏 **尺寸支持**：支持按资源尺寸（PC、手机、正方形等）筛选，灵活适配不同设备。
 -   🔢 **批量获取**：支持一次获取 1-20 张随机图片/视频。
 -   🛡️ **跨域支持**：内置 CORS 中间件，方便前端直接调用。
 -   🎥 **视频支持**：支持随机视频 API，与图片服务同样的使用方式。
@@ -69,6 +70,7 @@
     | 参数名   | 类型   | 必填 | 说明                                   |
     | :------- | :----- | :--- | :------------------------------------- |
     | category | string | 否   | 指定分类名（如 `cat`），不传则全库随机 |
+    | size     | string | 否   | 指定尺寸类型（如 `pc`、`phone`、`square`），不传则随机尺寸 |
     | count    | number | 否   | 获取数量 1-20，默认 1                  |
 
 -   **单张图片响应**：
@@ -76,6 +78,7 @@
     {
         "url": "https://example.com/cat1.jpg",
         "category": "cat",
+        "size": "pc",
         "success": true
     }
     ```
@@ -88,15 +91,18 @@
         "images": [
             {
                 "url": "https://example.com/cat1.jpg",
-                "category": "cat"
+                "category": "cat",
+                "size": "pc"
             },
             {
                 "url": "https://example.com/cat2.jpg",
-                "category": "cat"
+                "category": "cat",
+                "size": "phone"
             },
             {
                 "url": "https://example.com/cat3.jpg",
-                "category": "cat"
+                "category": "cat",
+                "size": "pc"
             }
         ]
     }
@@ -111,6 +117,7 @@
     | 参数名   | 类型   | 必填 | 说明                         |
     | :------- | :----- | :--- | :--------------------------- |
     | category | string | 否   | 指定分类名（如 `wallpaper`） |
+    | size     | string | 否   | 指定尺寸类型（如 `pc`、`phone`） |
 -   **响应**：
     ```
     HTTP/1.1 302 Found
@@ -118,7 +125,7 @@
     ```
 -   **使用方法**：
     ```html
-    <img src="http://your-domain.com/img?category=wallpaper" />
+    <img src="http://your-domain.com/img?category=wallpaper&size=pc" />
     ```
 
 ### 3. 获取随机视频 (JSON)
@@ -130,6 +137,7 @@
     | 参数名   | 类型   | 必填 | 说明                                   |
     | :------- | :----- | :--- | :------------------------------------- |
     | category | string | 否   | 指定分类名（如 `movie`），不传则全库随机 |
+    | size     | string | 否   | 指定尺寸类型（如 `pc`、`phone`），不传则随机尺寸 |
     | count    | number | 否   | 获取数量 1-20，默认 1                  |
 
 -   **单个视频响应**：
@@ -137,6 +145,7 @@
     {
         "url": "https://example.com/video/movie1.mp4",
         "category": "movie",
+        "size": "pc",
         "success": true
     }
     ```
@@ -149,15 +158,18 @@
         "videos": [
             {
                 "url": "https://example.com/video/movie1.mp4",
-                "category": "movie"
+                "category": "movie",
+                "size": "pc"
             },
             {
                 "url": "https://example.com/video/movie2.mp4",
-                "category": "movie"
+                "category": "movie",
+                "size": "phone"
             },
             {
                 "url": "https://example.com/video/movie3.mp4",
-                "category": "movie"
+                "category": "movie",
+                "size": "pc"
             }
         ]
     }
@@ -172,6 +184,7 @@
     | 参数名   | 类型   | 必填 | 说明                         |
     | :------- | :----- | :--- | :--------------------------- |
     | category | string | 否   | 指定分类名（如 `movie`） |
+    | size     | string | 否   | 指定尺寸类型（如 `pc`、`phone`） |
 -   **响应**：
     ```
     HTTP/1.1 302 Found
@@ -179,7 +192,7 @@
     ```
 -   **使用方法**：
     ```html
-    <video src="http://your-domain.com/video?category=movie" controls></video>
+    <video src="http://your-domain.com/video?category=movie&size=pc" controls></video>
     ```
 
 ### 5. 获取所有分类
@@ -197,7 +210,22 @@
     }
     ```
 
-### 6. 获取统计信息
+### 6. 获取所有尺寸
+
+获取当前系统中已加载的所有尺寸类型列表。
+
+-   **图片尺寸接口**：`GET /api/sizes/image`
+-   **视频尺寸接口**：`GET /api/sizes/video`
+-   **响应示例**：
+
+    ```json
+    {
+        "sizes": ["pc", "phone", "square"],
+        "count": 3
+    }
+    ```
+
+### 7. 获取统计信息
 
 获取图片库的详细统计信息。
 
@@ -209,25 +237,38 @@
         "success": true,
         "images": {
             "categories": 3,
+            "sizes": 2,
             "total": 250,
             "details": {
-                "cat": 100,
-                "scenery": 120,
-                "anime": 30
+                "cat": {
+                    "pc": 50,
+                    "phone": 50
+                },
+                "scenery": {
+                    "pc": 120
+                },
+                "anime": {
+                    "pc": 30
+                }
             }
         },
         "videos": {
             "categories": 2,
+            "sizes": 1,
             "total": 50,
             "details": {
-                "movie": 30,
-                "music": 20
+                "movie": {
+                    "pc": 30
+                },
+                "music": {
+                    "pc": 20
+                }
             }
         }
     }
     ```
 
-### 7. 健康检查
+### 8. 健康检查
 
 用于监控服务状态的健康检查端点。
 
@@ -278,14 +319,20 @@
 random_go/
 ├── data/
 │   ├── images/          # 图片链接存储目录
-│   │   ├── dongman.txt
-│   │   ├── meinv.txt
-│   │   ├── nature.txt
-│   │   └── ...
+│   │   ├── pc/          # PC 端图片
+│   │   │   ├── dongman.txt
+│   │   │   ├── meinv.txt
+│   │   │   └── nature.txt
+│   │   ├── phone/       # 手机端图片
+│   │   │   └── ...
+│   │   └── square/      # 正方形图片
+│   │       └── ...
 │   └── videos/          # 视频链接存储目录
-│       ├── movie.txt
-│       ├── music.txt
-│       └── ...
+│       ├── pc/
+│       │   ├── movie.txt
+│       │   └── music.txt
+│       └── phone/
+│           └── ...
 ├── main.go
 ├── go.mod
 ├── .env
@@ -296,6 +343,8 @@ random_go/
 ```
 
 **文件格式说明**：
+- 数据按 `{type}/{size}/{category}.txt` 结构组织，如 `data/images/pc/nature.txt`
+- 尺寸文件夹名可自定义（如 pc、phone、square、ultrawide 等）
 - 每个 `.txt` 文件代表一个分类，文件名即为分类名
 - 每行一个 URL，支持图片和视频链接
 - 空行会被自动忽略
@@ -313,7 +362,7 @@ random_go/
 #### 第二步：上传文件
 
 1.  在宝塔创建一个网站（目录如 `/www/wwwroot/api.yourdomain.com`）。
-2.  将下载的 `randimg-api-linux-amd64、 data 文件夹（包含 images 和 videos 子目录）、.env、favicon.ico、api_doc.html、preview.html` 上传至该目录。
+2.  将下载的 `randimg-api-linux-amd64、 data 文件夹、.env、favicon.ico、api_doc.html、preview.html` 上传至该目录。
 3.  **关键**：将 `randimg-api-linux-amd64` 文件权限设置为 `755`。
 
 #### 第三步：创建网站
@@ -334,33 +383,35 @@ random_go/
 ### 在前端 JS 中调用
 
 ```javascript
-// 获取单张图片
-fetch('http://your-domain.com/api/random/image?category=cat')
+// 获取单张图片（指定尺寸）
+fetch('http://your-domain.com/api/random/image?category=cat&size=pc')
   .then(response => response.json())
   .then(data => {
     if(data.success) {
       console.log('图片地址:', data.url);
+      console.log('尺寸:', data.size);
       document.getElementById('my-img').src = data.url;
     }
   });
 
-// 获取多张图片
+// 获取多张图片（随机尺寸）
 fetch('http://your-domain.com/api/random/image?category=wallpaper&count=5')
   .then(response => response.json())
   .then(data => {
     if(data.success) {
       data.images.forEach((img, index) => {
-        console.log(`图片${index + 1}:`, img.url);
+        console.log(`图片${index + 1}:`, img.url, '尺寸:', img.size);
       });
     }
   });
 
-// 获取随机视频
-fetch('http://your-domain.com/api/random/video?category=movie')
+// 获取随机视频（手机尺寸）
+fetch('http://your-domain.com/api/random/video?category=movie&size=phone')
   .then(response => response.json())
   .then(data => {
     if(data.success) {
       console.log('视频地址:', data.url);
+      console.log('尺寸:', data.size);
       document.getElementById('my-video').src = data.url;
     }
   });
@@ -369,17 +420,17 @@ fetch('http://your-domain.com/api/random/video?category=movie')
 ### 直接在 HTML 中使用
 
 ```html
-<!-- 直接嵌入随机图片 -->
-<img src="http://your-domain.com/img?category=anime" alt="随机动漫图片" />
+<!-- 直接嵌入随机图片（PC 尺寸） -->
+<img src="http://your-domain.com/img?category=anime&size=pc" alt="随机动漫图片" />
 
-<!-- 随机壁纸 -->
-<img src="http://your-domain.com/img?category=wallpaper" alt="随机壁纸" />
+<!-- 随机壁纸（手机尺寸） -->
+<img src="http://your-domain.com/img?category=wallpaper&size=phone" alt="随机壁纸" />
 
-<!-- 全库随机图片 -->
+<!-- 全库随机图片（随机尺寸） -->
 <img src="http://your-domain.com/img" alt="随机图片" />
 
-<!-- 随机视频 -->
-<video src="http://your-domain.com/video?category=movie" controls></video>
+<!-- 随机视频（PC 尺寸） -->
+<video src="http://your-domain.com/video?category=movie&size=pc" controls></video>
 
 <!-- 全库随机视频 -->
 <video src="http://your-domain.com/video" controls autoplay></video>

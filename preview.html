@@ -244,6 +244,13 @@
                 </select>
             </div>
 
+            <div class="control-group">
+                <label for="size">尺寸:</label>
+                <select id="size">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+
             <button onclick="loadResource()">🎲 随机加载</button>
         </div>
 
@@ -267,7 +274,11 @@
         // 页面加载时初始化
         window.onload = function() {
             loadCategories();
-            document.getElementById('resourceType').addEventListener('change', loadCategories);
+            loadSizes();
+            document.getElementById('resourceType').addEventListener('change', function() {
+                loadCategories();
+                loadSizes();
+            });
 
             // 绑定错误处理
             previewImage.onerror = () => showError('图片加载失败');
@@ -295,10 +306,32 @@
             }
         }
 
+        // 加载尺寸列表
+        async function loadSizes() {
+            const type = document.getElementById('resourceType').value;
+            const sizeSelect = document.getElementById('size');
+
+            try {
+                const response = await fetch(`/api/sizes/${type}`);
+                const data = await response.json();
+
+                sizeSelect.innerHTML = '<option value="">全部</option>';
+                data.sizes.forEach(sz => {
+                    const option = document.createElement('option');
+                    option.value = sz;
+                    option.textContent = sz;
+                    sizeSelect.appendChild(option);
+                });
+            } catch (error) {
+                showError('加载尺寸失败: ' + error.message);
+            }
+        }
+
         // 加载资源
         async function loadResource() {
             const type = document.getElementById('resourceType').value;
             const category = document.getElementById('category').value;
+            const size = document.getElementById('size').value;
 
             showLoading(true);
             hideError();
@@ -309,7 +342,7 @@
             previewVideo.classList.add('hidden');
 
             try {
-                const url = `/api/random/${type}?category=${category}`;
+                const url = `/api/random/${type}?category=${category}&size=${size}`;
                 const response = await fetch(url);
                 const data = await response.json();
 
@@ -317,7 +350,7 @@
                     throw new Error(data.message);
                 }
 
-                currentResource = {url: data.url, category: data.category};
+                currentResource = {url: data.url, category: data.category, size: data.size};
                 displayResource();
             } catch (error) {
                 showError('加载失败: ' + error.message);
@@ -364,6 +397,7 @@
             const info = document.getElementById('info');
             info.innerHTML = `
                 <p><strong>分类:</strong> ${currentResource.category}</p>
+                <p><strong>尺寸:</strong> ${currentResource.size}</p>
                 <p><strong>链接:</strong> <a href="${currentResource.url}" target="_blank">${currentResource.url}</a></p>
             `;
             info.classList.add('active');
