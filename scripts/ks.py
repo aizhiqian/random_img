@@ -9,15 +9,15 @@ def parse_video_url(url, max_retries=3):
     """
     for attempt in range(1, max_retries + 1):
         try:
-            api_url = f"https://xzdx.top/api/duan?url={quote(url)}"
+            api_url = f"https://api-v2.cenguigui.cn/api/sp_jx/kuaishou.php?url={quote(url)}"
 
             response = requests.get(api_url, timeout=30)
             response.raise_for_status()
 
             data = response.json()
 
-            if data.get('code') == 0 and 'data' in data:
-                video_url = data['data'].get('video_url')
+            if data.get('code') == 200 and 'data' in data:
+                video_url = data['data'].get('url')
                 if video_url:
                     print(f"✅ 解析成功: {url[:50]}")
                     return video_url
