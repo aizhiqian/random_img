@@ -9,7 +9,7 @@ def parse_video_url(url, max_retries=3):
     """
     for attempt in range(1, max_retries + 1):
         try:
-            api_url = f"https://api-v2.cenguigui.cn/api/sp_jx/kuaishou.php?url={quote(url)}"
+            api_url = f"https://api.bugpk.com/api/kuaishou?url={quote(url)}"
 
             response = requests.get(api_url, timeout=30)
             response.raise_for_status()
