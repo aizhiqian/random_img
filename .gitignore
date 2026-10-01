@@ -2,3 +2,4 @@ data/
 scripts/__pycache__/
 scripts/*.txt
 CLAUDE.md
+.claude/
