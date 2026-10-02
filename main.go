@@ -558,6 +558,6 @@ func main() {
     }
 
     // 启动服务，监听 38719 端口
-    fmt.Println("服务启动成功，监听端口 38719 ...")
+    fmt.Println("服务启动成功，访问地址：http://localhost:38719")
     r.Run(":38719")
 }

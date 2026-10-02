@@ -2,446 +2,1451 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>资源在线预览</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>随机短片 · 全屏预览</title>
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
     <style>
+        :root {
+            color-scheme: dark;
+            --text: #ffffff;
+            --muted: rgba(255, 255, 255, 0.72);
+            --subtle: rgba(255, 255, 255, 0.5);
+            --panel: rgba(22, 22, 24, 0.74);
+            --border: rgba(255, 255, 255, 0.14);
+            --accent: #fe2c55;
+            --accent-cyan: #25f4ee;
+            --safe-top: max(16px, env(safe-area-inset-top));
+            --safe-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
-        html, body {
+        html,
+        body {
+            width: 100%;
+            min-width: 0;
             height: 100%;
+            margin: 0;
             overflow: hidden;
+            background: #000;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            width: 100%;
-            height: 100%;
-            max-width: 1400px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            padding: 20px;
-            margin: 0;
-            font-size: 2.2em;
-            flex-shrink: 0;
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            padding: 15px 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            flex-shrink: 0;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        label {
-            font-weight: 600;
-            color: #555;
-            font-size: 14px;
-        }
-
-        select, button {
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: #667eea;
+        button,
+        select {
+            font: inherit;
         }
 
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .viewer {
+            position: relative;
+            isolation: isolate;
+            width: 100%;
+            height: 100%;
+            min-height: 100dvh;
+            overflow: hidden;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 85% 0%, rgba(254, 44, 85, 0.2), transparent 30%),
+                radial-gradient(circle at 8% 100%, rgba(37, 244, 238, 0.14), transparent 28%),
+                #090909;
+        }
+
+        .media-stage,
+        .media-stage img,
+        .media-stage video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .media-stage {
+            z-index: -2;
+            background: #0b0b0c;
             cursor: pointer;
+        }
+
+        .media-stage img,
+        .media-stage video {
+            display: block;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 260ms ease;
+        }
+
+        .media-stage .is-visible {
+            opacity: 1;
+        }
+
+        /* phone 资源通常是竖版比例；在桌面宽屏中完整显示，避免被 cover 裁掉上下内容。 */
+        @media (min-width: 641px) {
+            .media-stage.is-phone-resource {
+                background: #000;
+            }
+
+            .media-stage.is-phone-resource img,
+            .media-stage.is-phone-resource video {
+                object-fit: contain;
+            }
+        }
+
+        /* pc 资源通常是横版比例；在手机窄屏中完整显示，避免被 cover 裁掉左右内容。 */
+        @media (max-width: 640px) {
+            .media-stage.is-pc-resource {
+                background: #000;
+            }
+
+            .media-stage.is-pc-resource img,
+            .media-stage.is-pc-resource video {
+                object-fit: contain;
+            }
+        }
+
+        .media-stage::after {
+            position: absolute;
+            inset: 0;
+            content: "";
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.08) 25%, rgba(0, 0, 0, 0.02) 48%, rgba(0, 0, 0, 0.78) 100%),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.26), transparent 35%, rgba(0, 0, 0, 0.13));
+        }
+
+        .top-bar {
+            position: absolute;
+            z-index: 5;
+            top: var(--safe-top);
+            right: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            min-width: max-content;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+        }
+
+        .brand-mark {
+            position: relative;
+            width: 25px;
+            height: 25px;
+            border-radius: 8px;
+            background: var(--accent);
+            box-shadow: -3px 2px 0 var(--accent-cyan);
+        }
+
+        .brand-mark::before {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            width: 5px;
+            height: 12px;
+            content: "";
+            border-radius: 4px;
+            background: #fff;
+        }
+
+        .brand-mark::after {
+            position: absolute;
+            right: 4px;
+            bottom: 4px;
+            width: 8px;
+            height: 8px;
+            content: "";
+            border: 2px solid #fff;
+            border-radius: 50%;
+        }
+
+        .type-tabs {
+            display: flex;
+            align-items: center;
+            gap: 21px;
+            margin-right: auto;
+        }
+
+        .type-tab {
+            position: relative;
+            padding: 8px 0;
+            color: var(--subtle);
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            font-size: 15px;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            transition: color 160ms ease;
         }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        .type-tab::after {
+            position: absolute;
+            right: 50%;
+            bottom: 0;
+            left: 50%;
+            height: 3px;
+            content: "";
+            border-radius: 999px;
+            background: #fff;
+            transition: right 180ms ease, left 180ms ease;
         }
 
-        button:active {
-            transform: translateY(0);
+        .type-tab:hover,
+        .type-tab.is-active {
+            color: #fff;
         }
 
-        .preview-area {
-            flex: 1;
+        .type-tab.is-active::after {
+            right: 0;
+            left: 0;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .icon-button,
+        .rail-button,
+        .play-button,
+        .primary-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .icon-button {
+            width: 38px;
+            height: 38px;
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            background: rgba(12, 12, 14, 0.42);
+            backdrop-filter: blur(10px);
+            transition: background 160ms ease, transform 160ms ease;
+        }
+
+        .icon-button:hover,
+        .icon-button:focus-visible {
+            background: rgba(255, 255, 255, 0.19);
+            transform: scale(1.05);
+        }
+
+        .icon-button svg,
+        .rail-button svg,
+        .play-button svg {
+            width: 21px;
+            height: 21px;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.9;
+        }
+
+        .filter-sheet {
+            position: absolute;
+            z-index: 8;
+            top: calc(var(--safe-top) + 51px);
+            right: 20px;
+            width: min(330px, calc(100vw - 40px));
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: rgba(24, 24, 27, 0.9);
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(20px);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px) scale(0.98);
+            transform-origin: top right;
+            transition: opacity 170ms ease, transform 170ms ease;
+        }
+
+        .filter-sheet.is-open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+
+        .filter-title {
+            margin: 0 0 13px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+            margin-top: 11px;
+        }
+
+        .field label {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .field select {
+            width: 100%;
+            min-width: 0;
+            height: 40px;
+            padding: 0 35px 0 11px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 9px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+
+        .field select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .field option {
+            color: #111;
+            background: #fff;
+        }
+
+        .filter-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .filter-actions button {
+            min-height: 37px;
+            padding: 0 14px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .secondary-button {
+            color: var(--muted);
+            border: 1px solid var(--border);
+            background: transparent;
+        }
+
+        .primary-button {
+            background: var(--accent);
+        }
+
+        .side-rail {
+            position: absolute;
+            z-index: 4;
+            right: 20px;
+            bottom: calc(var(--safe-bottom) + 66px);
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            background: #f8f9fa;
-            padding: 20px;
-            position: relative;
+            gap: 18px;
+        }
+
+        .rail-action {
+            display: grid;
+            justify-items: center;
+            gap: 4px;
+        }
+
+        .rail-button {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(15, 15, 17, 0.3);
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+            transition: color 150ms ease, background 150ms ease, transform 150ms ease;
+        }
+
+        .rail-button:hover,
+        .rail-button:focus-visible {
+            background: rgba(255, 255, 255, 0.17);
+            transform: scale(1.08);
+        }
+
+        .rail-action span {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            text-shadow: 0 1px 7px rgba(0, 0, 0, 0.5);
+        }
+
+        .content {
+            position: absolute;
+            z-index: 3;
+            right: min(104px, 18vw);
+            bottom: calc(var(--safe-bottom) + 31px);
+            left: 20px;
+            max-width: min(640px, calc(100vw - 135px));
+            pointer-events: none;
+        }
+
+        .content > * {
+            pointer-events: auto;
+        }
+
+        .music-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            font-weight: 600;
+            text-shadow: 0 1px 7px rgba(0, 0, 0, 0.6);
+        }
+
+        .music-row svg {
+            flex: 0 0 auto;
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+        }
+
+        .music-name {
             overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .preview-area img,
-        .preview-area video {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            object-fit: contain;
+        .bottom-bar {
             position: absolute;
+            z-index: 4;
+            right: 20px;
+            bottom: var(--safe-bottom);
+            left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
         }
 
-        .preview-area img.hidden,
-        .preview-area video.hidden {
-            visibility: hidden;
+        .progress-track {
+            flex: 1;
+            height: 3px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.28);
         }
 
-        .loading {
-            font-size: 1.2em;
-            color: #667eea;
+        .progress-value {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: #fff;
+            transition: width 100ms linear;
+        }
+
+        .small-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .small-controls .icon-button {
+            width: 32px;
+            height: 32px;
+        }
+
+        .small-controls .icon-button svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .loading-state,
+        .error-state {
+            position: absolute;
+            z-index: 7;
+            top: 50%;
+            left: 50%;
             display: none;
-            position: absolute;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .info {
-            padding: 15px 30px;
-            background: white;
-            border-top: 1px solid #e9ecef;
+            transform: translate(-50%, -50%);
             text-align: center;
-            display: none;
-            flex-shrink: 0;
         }
 
-        .info.active {
-            display: block;
+        .loading-state.is-active,
+        .error-state.is-active {
+            display: grid;
+            justify-items: center;
+            gap: 13px;
         }
 
-        .info p {
-            margin: 5px 0;
-            color: #555;
+        .spinner {
+            width: 34px;
+            height: 34px;
+            border: 3px solid rgba(255, 255, 255, 0.35);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .loading-state p,
+        .error-state p {
+            max-width: min(310px, 80vw);
+            margin: 0;
+            color: #fff;
+            text-shadow: 0 1px 10px #000;
             font-size: 14px;
+            line-height: 1.45;
         }
 
-        .info a {
-            color: #667eea;
-            text-decoration: none;
-            word-break: break-all;
+        .retry-button {
+            padding: 9px 15px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.38);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
         }
 
-        .info a:hover {
-            text-decoration: underline;
-        }
-
-        .error {
-            color: #dc3545;
-            padding: 15px;
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            border-radius: 8px;
-            display: none;
+        .play-button {
             position: absolute;
-            max-width: 80%;
+            z-index: 6;
+            top: 50%;
+            left: 50%;
+            width: 70px;
+            height: 70px;
+            transform: translate(-50%, -50%) scale(0.92);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.34);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.23);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease, transform 150ms ease;
+            backdrop-filter: blur(8px);
         }
 
-        .error.active {
+        .play-button.is-visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .play-button svg {
+            width: 31px;
+            height: 31px;
+            margin-left: 3px;
+            fill: #fff;
+            stroke: none;
+        }
+
+        .toast {
+            position: absolute;
+            z-index: 12;
+            top: calc(var(--safe-top) + 58px);
+            left: 50%;
+            width: max-content;
+            max-width: calc(100vw - 40px);
+            padding: 10px 14px;
+            transform: translate(-50%, -8px);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            background: rgba(18, 18, 20, 0.88);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease, transform 150ms ease;
+            backdrop-filter: blur(12px);
+            font-size: 13px;
+        }
+
+        .toast.is-visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .qr-dialog {
+            position: absolute;
+            z-index: 20;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 170ms ease, visibility 170ms ease;
+        }
+
+        .qr-dialog.is-open {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .qr-backdrop {
+            position: absolute;
+            inset: 0;
+            border: 0;
+            background: rgba(0, 0, 0, 0.66);
+            cursor: default;
+            backdrop-filter: blur(7px);
+        }
+
+        .qr-card {
+            position: relative;
+            display: grid;
+            width: min(306px, calc(100vw - 40px));
+            justify-items: center;
+            padding: 24px 24px 21px;
+            color: #121214;
+            border-radius: 20px;
+            background: #fff;
+            box-shadow: 0 20px 70px rgba(0, 0, 0, 0.48);
+            transform: translateY(10px) scale(0.97);
+            transition: transform 180ms ease;
+        }
+
+        .qr-dialog.is-open .qr-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .qr-card h2 {
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.3;
+        }
+
+        .qr-close {
+            position: absolute;
+            top: 9px;
+            right: 9px;
+            display: grid;
+            width: 32px;
+            height: 32px;
+            place-items: center;
+            color: #65656a;
+            border: 0;
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            font-size: 25px;
+            line-height: 1;
+        }
+
+        .qr-close:hover,
+        .qr-close:focus-visible {
+            color: #111;
+            background: #f1f1f3;
+        }
+
+        .qr-code-button {
+            display: grid;
+            width: 218px;
+            height: 218px;
+            place-items: center;
+            margin-top: 18px;
+            padding: 11px;
+            border: 1px solid #e5e5e8;
+            border-radius: 12px;
+            background: #fff;
+            cursor: pointer;
+            transition: background 150ms ease, transform 150ms ease;
+        }
+
+        .qr-code-button:hover,
+        .qr-code-button:focus-visible {
+            background: #f7f7f9;
+            transform: scale(1.02);
+        }
+
+        .qr-code {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            place-items: center;
+        }
+
+        .qr-code svg {
             display: block;
+            width: 100%;
+            height: 100%;
         }
 
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
+        .qr-code-fallback {
+            padding: 12px;
+            color: #777;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .qr-hint {
+            margin: 15px 0 0;
+            color: #69696f;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .keyboard-hint {
+            position: absolute;
+            z-index: 2;
+            bottom: calc(var(--safe-bottom) + 68px);
+            left: 50%;
+            padding: 6px 11px;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.62);
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.22);
+            opacity: 1;
+            transition: opacity 500ms ease;
+            font-size: 11px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .keyboard-hint.is-hidden {
+            opacity: 0;
+        }
+
+        .top-bar,
+        .side-rail,
+        .content,
+        .bottom-bar {
+            transition: opacity 180ms ease, visibility 180ms ease;
+        }
+
+        .viewer.is-ui-hidden .top-bar,
+        .viewer.is-ui-hidden .filter-sheet,
+        .viewer.is-ui-hidden .side-rail,
+        .viewer.is-ui-hidden .content,
+        .viewer.is-ui-hidden .bottom-bar,
+        .viewer.is-ui-hidden .play-button,
+        .viewer.is-ui-hidden .loading-state,
+        .viewer.is-ui-hidden .error-state,
+        .viewer.is-ui-hidden .keyboard-hint,
+        .viewer.is-ui-hidden .toast {
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 640px) {
+            .top-bar {
+                right: 15px;
+                left: 15px;
+                gap: 13px;
             }
 
-            h1 {
-                font-size: 1.6em;
-                padding: 15px;
+            .brand span {
+                display: none;
             }
 
-            .controls {
-                flex-direction: column;
-                padding: 10px 15px;
-                gap: 10px;
+            .type-tabs {
+                gap: 18px;
             }
 
-            .control-group {
-                width: 100%;
+            .top-actions .document-link {
+                display: none;
             }
 
-            .control-group label {
-                min-width: 80px;
+            .filter-sheet {
+                right: 15px;
+                width: min(340px, calc(100vw - 30px));
             }
 
-            .control-group select,
-            .control-group button {
-                flex: 1;
+            .side-rail {
+                right: 11px;
+                bottom: calc(var(--safe-bottom) + 89px);
+                gap: 13px;
             }
 
-            .info {
-                padding: 10px 15px;
+            .rail-button {
+                width: 42px;
+                height: 42px;
+            }
+
+            .content {
+                right: 70px;
+                bottom: calc(var(--safe-bottom) + 44px);
+                left: 15px;
+                max-width: calc(100vw - 86px);
+            }
+
+            .bottom-bar {
+                right: 15px;
+                left: 15px;
+            }
+
+            .keyboard-hint {
+                display: none;
             }
         }
 
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 1.4em;
+        @media (max-height: 600px) and (min-width: 641px) {
+            .side-rail {
+                bottom: calc(var(--safe-bottom) + 48px);
+                gap: 9px;
+            }
+
+            .content {
+                bottom: calc(var(--safe-bottom) + 24px);
+            }
+
+            .music-row {
+                display: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎬 资源在线预览</h1>
+    <main class="viewer" id="viewer">
+        <div class="media-stage" id="mediaStage" aria-label="媒体预览区域">
+            <img id="previewImage" alt="随机图片预览">
+            <video id="previewVideo" playsinline muted preload="auto"></video>
+        </div>
 
-        <div class="controls">
-            <div class="control-group">
-                <label for="resourceType">资源类型:</label>
-                <select id="resourceType">
-                    <option value="image">图片</option>
-                    <option value="video">视频</option>
-                </select>
+        <header class="top-bar">
+            <div class="brand" aria-label="随机短片">
+                <i class="brand-mark" aria-hidden="true"></i>
+                <span>随机短片</span>
             </div>
+            <nav class="type-tabs" aria-label="资源类型">
+                <button class="type-tab is-active" type="button" data-type="video" aria-pressed="true">推荐视频</button>
+                <button class="type-tab" type="button" data-type="image" aria-pressed="false">图片探索</button>
+            </nav>
+            <div class="top-actions">
+                <a class="icon-button document-link" href="/" aria-label="返回 API 文档" title="API 文档">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><path d="M14 4v6h6"></path><path d="M14 4l6 6"></path></svg>
+                </a>
+                <button class="icon-button" id="filterToggle" type="button" aria-label="打开筛选" aria-expanded="false" title="筛选">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+                </button>
+            </div>
+        </header>
 
-            <div class="control-group">
-                <label for="category">分类:</label>
+        <section class="filter-sheet" id="filterSheet" aria-label="资源筛选" aria-hidden="true">
+            <h1 class="filter-title">筛选推荐内容</h1>
+            <div class="field">
+                <label for="category">分类</label>
                 <select id="category">
-                    <option value="">加载中...</option>
+                    <option value="">全部分类</option>
                 </select>
             </div>
-
-            <div class="control-group">
-                <label for="size">尺寸:</label>
+            <div class="field">
+                <label for="size">尺寸</label>
                 <select id="size">
-                    <option value="">加载中...</option>
+                    <option value="">全部尺寸</option>
                 </select>
             </div>
+            <div class="filter-actions">
+                <button class="secondary-button" id="resetFilters" type="button">重置</button>
+                <button class="primary-button" id="applyFilters" type="button">开始播放</button>
+            </div>
+        </section>
 
-            <button onclick="loadResource()">🎲 随机加载</button>
+        <aside class="side-rail" aria-label="视频操作">
+            <div class="rail-action">
+                <button class="rail-button" id="shareButton" type="button" aria-label="分享当前资源">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4"></path><path d="m8.6 13.5 6.8 4"></path></svg>
+                </button>
+                <span>分享</span>
+            </div>
+        </aside>
+
+        <section class="content" aria-live="polite">
+            <div class="music-row">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>
+                <span class="music-name" id="sourceName">随机媒体 · 正在加载</span>
+            </div>
+        </section>
+
+        <button class="play-button" id="playButton" type="button" aria-label="继续播放">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"></path></svg>
+        </button>
+
+        <div class="loading-state is-active" id="loadingState" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <p>正在准备下一条内容…</p>
+        </div>
+        <div class="error-state" id="errorState" role="alert">
+            <p id="errorMessage">暂时无法加载资源</p>
+            <button class="retry-button" id="retryButton" type="button">重新尝试</button>
         </div>
 
-        <div class="preview-area" id="previewArea">
-            <div class="loading" id="loading">加载中...</div>
-            <div class="error" id="error"></div>
-            <img id="previewImage" class="hidden" alt="预览图片">
-            <video id="previewVideo" class="hidden" controls></video>
+        <div class="qr-dialog" id="shareDialog" aria-hidden="true">
+            <button class="qr-backdrop" id="shareBackdrop" type="button" tabindex="-1" aria-label="关闭二维码"></button>
+            <section class="qr-card" role="dialog" aria-modal="true" aria-labelledby="shareDialogTitle">
+                <button class="qr-close" id="closeShareDialog" type="button" aria-label="关闭二维码">×</button>
+                <h2 id="shareDialogTitle">扫码分享</h2>
+                <button class="qr-code-button" id="qrCodeButton" type="button" aria-label="点击二维码复制链接">
+                    <span class="qr-code" id="qrCode" aria-hidden="true"></span>
+                </button>
+                <p class="qr-hint" id="qrHint">扫描二维码打开，点击二维码复制链接</p>
+            </section>
         </div>
 
-        <div class="info" id="info"></div>
-    </div>
+        <footer class="bottom-bar">
+            <div class="progress-track" aria-hidden="true"><div class="progress-value" id="progressValue"></div></div>
+            <div class="small-controls">
+                <button class="icon-button" id="soundButton" type="button" aria-label="打开声音" title="打开声音">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10H4Z"></path><path id="soundWave" d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"></path></svg>
+                </button>
+                <button class="icon-button" id="fullscreenButton" type="button" aria-label="进入全屏" title="全屏显示">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5"></path><path d="M16 3h5v5"></path><path d="M21 16v5h-5"></path><path d="M3 16v5h5"></path></svg>
+                </button>
+            </div>
+        </footer>
 
+        <div class="keyboard-hint" id="keyboardHint">点击暂停 · 滑动或按 ↓ 切换下一条</div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
     <script>
-        let currentResource = null;
+        (() => {
+            const state = {
+                type: 'video',
+                resource: null,
+                requestId: 0,
+                typeRequestId: 0,
+                touchStartY: 0,
+                lastWheelAt: 0,
+                shareUrl: '',
+                uiHideTimer: null,
+                toastTimer: null,
+                hintTimer: null
+            };
 
-        // 获取媒体元素引用
-        const previewImage = document.getElementById('previewImage');
-        const previewVideo = document.getElementById('previewVideo');
+            const elements = {
+                viewer: document.getElementById('viewer'),
+                stage: document.getElementById('mediaStage'),
+                image: document.getElementById('previewImage'),
+                video: document.getElementById('previewVideo'),
+                category: document.getElementById('category'),
+                size: document.getElementById('size'),
+                filterToggle: document.getElementById('filterToggle'),
+                filterSheet: document.getElementById('filterSheet'),
+                resetFilters: document.getElementById('resetFilters'),
+                applyFilters: document.getElementById('applyFilters'),
+                tabs: [...document.querySelectorAll('.type-tab')],
+                loading: document.getElementById('loadingState'),
+                error: document.getElementById('errorState'),
+                errorMessage: document.getElementById('errorMessage'),
+                retry: document.getElementById('retryButton'),
+                play: document.getElementById('playButton'),
+                progress: document.getElementById('progressValue'),
+                sourceName: document.getElementById('sourceName'),
+                share: document.getElementById('shareButton'),
+                shareDialog: document.getElementById('shareDialog'),
+                shareBackdrop: document.getElementById('shareBackdrop'),
+                closeShareDialog: document.getElementById('closeShareDialog'),
+                qrCode: document.getElementById('qrCode'),
+                qrCodeButton: document.getElementById('qrCodeButton'),
+                qrHint: document.getElementById('qrHint'),
+                sound: document.getElementById('soundButton'),
+                soundWave: document.getElementById('soundWave'),
+                fullscreen: document.getElementById('fullscreenButton'),
+                toast: document.getElementById('toast'),
+                hint: document.getElementById('keyboardHint')
+            };
 
-        // 页面加载时初始化
-        window.onload = function() {
-            loadCategories();
-            loadSizes();
-            document.getElementById('resourceType').addEventListener('change', function() {
-                loadCategories();
-                loadSizes();
+            function showToast(message) {
+                clearTimeout(state.toastTimer);
+                elements.toast.textContent = message;
+                elements.toast.classList.add('is-visible');
+                state.toastTimer = window.setTimeout(() => {
+                    elements.toast.classList.remove('is-visible');
+                }, 2200);
+            }
+
+            function shouldKeepUIVisible() {
+                return elements.filterSheet.classList.contains('is-open')
+                    || elements.shareDialog.classList.contains('is-open')
+                    || elements.loading.classList.contains('is-active')
+                    || elements.error.classList.contains('is-active');
+            }
+
+            function scheduleUiHide() {
+                clearTimeout(state.uiHideTimer);
+                if (shouldKeepUIVisible()) {
+                    return;
+                }
+                state.uiHideTimer = window.setTimeout(() => {
+                    if (!shouldKeepUIVisible()) {
+                        elements.viewer.classList.add('is-ui-hidden');
+                    }
+                }, 1000);
+            }
+
+            function showUI() {
+                elements.viewer.classList.remove('is-ui-hidden');
+                scheduleUiHide();
+            }
+
+            function setLoading(isLoading) {
+                elements.loading.classList.toggle('is-active', isLoading);
+                if (isLoading) {
+                    showUI();
+                } else {
+                    scheduleUiHide();
+                }
+            }
+
+            function showError(message) {
+                elements.errorMessage.textContent = message;
+                elements.error.classList.add('is-active');
+                showUI();
+                setLoading(false);
+            }
+
+            function hideError() {
+                elements.error.classList.remove('is-active');
+                scheduleUiHide();
+            }
+
+            function clearMedia() {
+                elements.image.classList.remove('is-visible');
+                elements.video.classList.remove('is-visible');
+                elements.stage.classList.remove('is-phone-resource', 'is-pc-resource');
+                elements.video.pause();
+                elements.progress.style.width = '0%';
+                elements.play.classList.remove('is-visible');
+            }
+
+            function setFiltersOpen(isOpen) {
+                elements.filterSheet.classList.toggle('is-open', isOpen);
+                elements.filterSheet.setAttribute('aria-hidden', String(!isOpen));
+                elements.filterToggle.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) {
+                    showUI();
+                } else {
+                    scheduleUiHide();
+                }
+            }
+
+            function populateSelect(select, items, placeholder) {
+                const selectedValue = select.value;
+                select.replaceChildren();
+                const allOption = new Option(placeholder, '');
+                select.appendChild(allOption);
+                items.forEach(item => select.appendChild(new Option(item, item)));
+                select.value = items.includes(selectedValue) ? selectedValue : '';
+            }
+
+            async function loadFilters(type) {
+                const [categoryResponse, sizeResponse] = await Promise.all([
+                    fetch(`/api/categories/${type}`, { headers: { Accept: 'application/json' } }),
+                    fetch(`/api/sizes/${type}`, { headers: { Accept: 'application/json' } })
+                ]);
+
+                if (!categoryResponse.ok || !sizeResponse.ok) {
+                    throw new Error('筛选项加载失败');
+                }
+
+                const [categoryData, sizeData] = await Promise.all([
+                    categoryResponse.json(),
+                    sizeResponse.json()
+                ]);
+
+                return {
+                    categories: Array.isArray(categoryData.categories) ? categoryData.categories : [],
+                    sizes: Array.isArray(sizeData.sizes) ? sizeData.sizes : []
+                };
+            }
+
+            function updateTabs() {
+                elements.tabs.forEach(tab => {
+                    const active = tab.dataset.type === state.type;
+                    tab.classList.toggle('is-active', active);
+                    tab.setAttribute('aria-pressed', String(active));
+                });
+            }
+
+            async function switchType(type) {
+                if (type === state.type && state.resource) {
+                    return;
+                }
+
+                const typeRequestId = ++state.typeRequestId;
+                state.type = type;
+                state.resource = null;
+                updateTabs();
+                clearMedia();
+                setLoading(true);
+                hideError();
+
+                try {
+                    const filters = await loadFilters(type);
+                    if (typeRequestId !== state.typeRequestId || type !== state.type) {
+                        return;
+                    }
+                    populateSelect(elements.category, filters.categories, '全部分类');
+                    populateSelect(elements.size, filters.sizes, '全部尺寸');
+                    await loadResource();
+                } catch (error) {
+                    if (typeRequestId === state.typeRequestId) {
+                        showError(error.message || '无法加载筛选项，请稍后再试');
+                    }
+                }
+            }
+
+            function updateDetails(resource) {
+                const typeName = state.type === 'video' ? '随机短视频' : '随机图片';
+                elements.sourceName.textContent = `${typeName} · ${resource.category || '推荐内容'}`;
+            }
+
+            function finalizeMedia(media, requestId) {
+                if (requestId !== state.requestId) {
+                    return;
+                }
+                media.classList.add('is-visible');
+                setLoading(false);
+                hideError();
+            }
+
+            function mediaError(requestId, message) {
+                if (requestId !== state.requestId) {
+                    return;
+                }
+                showError(message);
+            }
+
+            function displayResource(resource, requestId) {
+                clearMedia();
+                updateDetails(resource);
+                const resourceSize = String(resource.size).toLowerCase();
+                elements.stage.classList.toggle('is-phone-resource', resourceSize === 'phone');
+                elements.stage.classList.toggle('is-pc-resource', resourceSize === 'pc');
+
+                if (state.type === 'image') {
+                    elements.image.onload = () => finalizeMedia(elements.image, requestId);
+                    elements.image.onerror = () => mediaError(requestId, '图片加载失败，请切换下一条重试');
+                    elements.image.src = resource.url;
+                    return;
+                }
+
+                elements.video.onloadeddata = async () => {
+                    finalizeMedia(elements.video, requestId);
+                    try {
+                        await elements.video.play();
+                        elements.play.classList.remove('is-visible');
+                    } catch (error) {
+                        elements.play.classList.add('is-visible');
+                    }
+                };
+                elements.video.onerror = () => mediaError(requestId, '视频加载失败，请切换下一条重试');
+                elements.video.src = resource.url;
+                elements.video.load();
+            }
+
+            async function loadResource() {
+                const requestId = ++state.requestId;
+                const params = new URLSearchParams();
+                if (elements.category.value) {
+                    params.set('category', elements.category.value);
+                }
+                if (elements.size.value) {
+                    params.set('size', elements.size.value);
+                }
+
+                setLoading(true);
+                hideError();
+                clearMedia();
+
+                try {
+                    const query = params.toString();
+                    const response = await fetch(`/api/random/${state.type}${query ? `?${query}` : ''}`, {
+                        headers: { Accept: 'application/json' }
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success || !data.url) {
+                        throw new Error(data.message || '没有可用的资源');
+                    }
+                    if (requestId !== state.requestId) {
+                        return;
+                    }
+
+                    state.resource = data;
+                    displayResource(data, requestId);
+                } catch (error) {
+                    if (requestId === state.requestId) {
+                        showError(error.message || '加载失败，请稍后再试');
+                    }
+                }
+            }
+
+            function togglePlayback() {
+                if (state.type !== 'video' || !state.resource) {
+                    return;
+                }
+                if (elements.video.paused) {
+                    elements.video.play()
+                        .then(() => elements.play.classList.remove('is-visible'))
+                        .catch(() => elements.play.classList.add('is-visible'));
+                } else {
+                    elements.video.pause();
+                    elements.play.classList.add('is-visible');
+                }
+            }
+
+            function updateSoundControl() {
+                const muted = elements.video.muted;
+                elements.sound.setAttribute('aria-label', muted ? '打开声音' : '关闭声音');
+                elements.sound.title = muted ? '打开声音' : '关闭声音';
+                elements.soundWave.style.display = muted ? 'none' : '';
+            }
+
+            function setShareDialogOpen(isOpen) {
+                const wasOpen = elements.shareDialog.classList.contains('is-open');
+                elements.shareDialog.classList.toggle('is-open', isOpen);
+                elements.shareDialog.setAttribute('aria-hidden', String(!isOpen));
+                if (isOpen) {
+                    showUI();
+                } else {
+                    scheduleUiHide();
+                }
+                if (!isOpen && wasOpen) {
+                    elements.share.focus();
+                }
+            }
+
+            function renderQrCode(url) {
+                if (typeof window.qrcode !== 'function') {
+                    throw new Error('二维码组件未加载');
+                }
+
+                const qr = window.qrcode(0, 'M');
+                qr.addData(url);
+                qr.make();
+                elements.qrCode.innerHTML = qr.createSvgTag(5, 0);
+            }
+
+            function shareCurrentResource() {
+                state.shareUrl = state.resource?.url || window.location.href;
+                elements.qrHint.textContent = state.resource?.url
+                    ? '扫描二维码打开，点击二维码复制链接'
+                    : '当前资源未加载，点击二维码复制页面链接';
+
+                try {
+                    renderQrCode(state.shareUrl);
+                } catch (error) {
+                    elements.qrCode.innerHTML = '<span class="qr-code-fallback">二维码生成失败<br>点击此处复制链接</span>';
+                }
+
+                setShareDialogOpen(true);
+                elements.qrCodeButton.focus();
+            }
+
+            function copyWithFallback(text) {
+                const input = document.createElement('textarea');
+                input.value = text;
+                input.setAttribute('readonly', '');
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                input.setSelectionRange(0, input.value.length);
+                const copied = document.execCommand('copy');
+                input.remove();
+                if (!copied) {
+                    throw new Error('复制失败');
+                }
+            }
+
+            async function copyShareLink() {
+                if (!state.shareUrl) {
+                    return;
+                }
+
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(state.shareUrl);
+                    } else {
+                        copyWithFallback(state.shareUrl);
+                    }
+                    setShareDialogOpen(false);
+                    showToast('链接已复制');
+                } catch (error) {
+                    try {
+                        copyWithFallback(state.shareUrl);
+                        setShareDialogOpen(false);
+                        showToast('链接已复制');
+                    } catch (fallbackError) {
+                        showToast('复制失败，请手动复制链接');
+                    }
+                }
+            }
+
+            async function toggleFullscreen() {
+                try {
+                    if (!document.fullscreenElement) {
+                        await elements.viewer.requestFullscreen();
+                    } else {
+                        await document.exitFullscreen();
+                    }
+                } catch (error) {
+                    showToast('当前浏览器不支持全屏切换');
+                }
+            }
+
+            function updateFullscreenControl() {
+                const entering = !document.fullscreenElement;
+                elements.fullscreen.setAttribute('aria-label', entering ? '进入全屏' : '退出全屏');
+                elements.fullscreen.title = entering ? '全屏显示' : '退出全屏';
+            }
+
+            function dismissHint() {
+                elements.hint.classList.add('is-hidden');
+                clearTimeout(state.hintTimer);
+            }
+
+            function noteUIActivity() {
+                showUI();
+                dismissHint();
+            }
+
+            elements.tabs.forEach(tab => {
+                tab.addEventListener('click', () => switchType(tab.dataset.type));
             });
 
-            // 绑定错误处理
-            previewImage.onerror = () => showError('图片加载失败');
-            previewVideo.onerror = () => showError('视频加载失败');
-        };
+            elements.filterToggle.addEventListener('click', () => {
+                setFiltersOpen(!elements.filterSheet.classList.contains('is-open'));
+            });
 
-        // 加载分类列表
-        async function loadCategories() {
-            const type = document.getElementById('resourceType').value;
-            const categorySelect = document.getElementById('category');
-
-            try {
-                const response = await fetch(`/api/categories/${type}`);
-                const data = await response.json();
-
-                categorySelect.innerHTML = '<option value="">全部</option>';
-                data.categories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat;
-                    option.textContent = cat;
-                    categorySelect.appendChild(option);
-                });
-            } catch (error) {
-                showError('加载分类失败: ' + error.message);
-            }
-        }
-
-        // 加载尺寸列表
-        async function loadSizes() {
-            const type = document.getElementById('resourceType').value;
-            const sizeSelect = document.getElementById('size');
-
-            try {
-                const response = await fetch(`/api/sizes/${type}`);
-                const data = await response.json();
-
-                sizeSelect.innerHTML = '<option value="">全部</option>';
-                data.sizes.forEach(sz => {
-                    const option = document.createElement('option');
-                    option.value = sz;
-                    option.textContent = sz;
-                    sizeSelect.appendChild(option);
-                });
-            } catch (error) {
-                showError('加载尺寸失败: ' + error.message);
-            }
-        }
-
-        // 加载资源
-        async function loadResource() {
-            const type = document.getElementById('resourceType').value;
-            const category = document.getElementById('category').value;
-            const size = document.getElementById('size').value;
-
-            showLoading(true);
-            hideError();
-            hideInfo();
-
-            // 隐藏当前媒体
-            previewImage.classList.add('hidden');
-            previewVideo.classList.add('hidden');
-
-            try {
-                const url = `/api/random/${type}?category=${category}&size=${size}`;
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (!data.success) {
-                    throw new Error(data.message);
-                }
-
-                currentResource = {url: data.url, category: data.category, size: data.size};
-                displayResource();
-            } catch (error) {
-                showError('加载失败: ' + error.message);
-                showLoading(false);
-            }
-        }
-
-        // 显示资源
-        function displayResource() {
-            if (!currentResource) return;
-
-            const type = document.getElementById('resourceType').value;
-
-            // 暂停视频
-            previewVideo.pause();
-
-            // 隐藏所有媒体元素
-            previewImage.classList.add('hidden');
-            previewVideo.classList.add('hidden');
-
-            // 更新对应元素的 src 并显示
-            if (type === 'image') {
-                previewImage.onload = () => {
-                    previewImage.classList.remove('hidden');
-                    showLoading(false);
-                };
-                previewImage.src = currentResource.url;
-            } else {
-                previewVideo.onloadeddata = () => {
-                    previewVideo.classList.remove('hidden');
-                    showLoading(false);
-                };
-                previewVideo.src = currentResource.url;
-                previewVideo.load();
-                previewVideo.play();
-            }
-
-            // 显示信息
-            showInfo();
-        }
-
-        // 显示信息
-        function showInfo() {
-            const info = document.getElementById('info');
-            info.innerHTML = `
-                <p><strong>分类:</strong> ${currentResource.category}</p>
-                <p><strong>尺寸:</strong> ${currentResource.size}</p>
-                <p><strong>链接:</strong> <a href="${currentResource.url}" target="_blank">${currentResource.url}</a></p>
-            `;
-            info.classList.add('active');
-        }
-
-        function hideInfo() {
-            document.getElementById('info').classList.remove('active');
-        }
-
-        // 显示/隐藏加载状态
-        function showLoading(show) {
-            const loading = document.getElementById('loading');
-            if (loading) {
-                if (show) {
-                    loading.classList.add('active');
-                } else {
-                    loading.classList.remove('active');
-                }
-            }
-        }
-
-        // 显示错误
-        function showError(message) {
-            const error = document.getElementById('error');
-            if (error) {
-                error.textContent = message;
-                error.classList.add('active');
-            }
-        }
-
-        function hideError() {
-            const error = document.getElementById('error');
-            if (error) {
-                error.classList.remove('active');
-            }
-        }
-
-        // 键盘快捷键
-        document.addEventListener('keydown', function(e) {
-            if (e.key === ' ' || e.key === 'r' || e.key === 'n' || e.key === 'ArrowRight') {
-                e.preventDefault();
+            elements.applyFilters.addEventListener('click', () => {
+                setFiltersOpen(false);
                 loadResource();
-            }
-        });
+            });
+
+            elements.resetFilters.addEventListener('click', () => {
+                elements.category.value = '';
+                elements.size.value = '';
+            });
+
+            elements.retry.addEventListener('click', loadResource);
+            elements.play.addEventListener('click', togglePlayback);
+            elements.stage.addEventListener('click', togglePlayback);
+
+            elements.share.addEventListener('click', shareCurrentResource);
+            elements.shareBackdrop.addEventListener('click', () => setShareDialogOpen(false));
+            elements.closeShareDialog.addEventListener('click', () => setShareDialogOpen(false));
+            elements.qrCodeButton.addEventListener('click', copyShareLink);
+            elements.sound.addEventListener('click', () => {
+                elements.video.muted = !elements.video.muted;
+                updateSoundControl();
+                if (state.type === 'video' && elements.video.paused) {
+                    togglePlayback();
+                }
+            });
+            elements.fullscreen.addEventListener('click', toggleFullscreen);
+
+            elements.video.addEventListener('timeupdate', () => {
+                const duration = elements.video.duration;
+                const currentTime = elements.video.currentTime;
+                const progress = Number.isFinite(duration) && duration > 0 ? (currentTime / duration) * 100 : 0;
+                elements.progress.style.width = `${progress}%`;
+            });
+            elements.video.addEventListener('pause', () => {
+                if (state.type === 'video' && state.resource && !elements.video.ended) {
+                    elements.play.classList.add('is-visible');
+                }
+            });
+            elements.video.addEventListener('play', () => elements.play.classList.remove('is-visible'));
+            elements.video.addEventListener('ended', () => loadResource());
+
+            document.addEventListener('fullscreenchange', updateFullscreenControl);
+            document.addEventListener('pointermove', noteUIActivity, { passive: true });
+            document.addEventListener('pointerdown', noteUIActivity, { passive: true });
+            document.addEventListener('click', event => {
+                if (!elements.filterSheet.contains(event.target) && !elements.filterToggle.contains(event.target)) {
+                    setFiltersOpen(false);
+                }
+            });
+
+            document.addEventListener('keydown', event => {
+                const target = event.target;
+                if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+                    return;
+                }
+                noteUIActivity();
+                if (event.key === 'ArrowDown' || event.key === 'ArrowRight' || event.key.toLowerCase() === 'n') {
+                    event.preventDefault();
+                    dismissHint();
+                    loadResource();
+                }
+                if (event.key === ' ' || event.key === 'k') {
+                    event.preventDefault();
+                    togglePlayback();
+                }
+                if (event.key === 'f') {
+                    toggleFullscreen();
+                }
+                if (event.key === 'Escape') {
+                    setFiltersOpen(false);
+                    setShareDialogOpen(false);
+                }
+            });
+
+            elements.stage.addEventListener('wheel', event => {
+                if (Math.abs(event.deltaY) < 20 || Date.now() - state.lastWheelAt < 700) {
+                    return;
+                }
+                state.lastWheelAt = Date.now();
+                dismissHint();
+                loadResource();
+            }, { passive: true });
+
+            elements.stage.addEventListener('touchstart', event => {
+                noteUIActivity();
+                state.touchStartY = event.changedTouches[0].clientY;
+            }, { passive: true });
+            elements.stage.addEventListener('touchend', event => {
+                const distance = state.touchStartY - event.changedTouches[0].clientY;
+                if (distance > 52) {
+                    dismissHint();
+                    loadResource();
+                }
+            }, { passive: true });
+
+            updateSoundControl();
+            updateFullscreenControl();
+            state.hintTimer = window.setTimeout(dismissHint, 4500);
+            scheduleUiHide();
+            switchType('video');
+        })();
     </script>
 </body>
 </html>

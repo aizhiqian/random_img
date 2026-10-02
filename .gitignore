@@ -3,3 +3,4 @@ scripts/__pycache__/
 scripts/*.txt
 CLAUDE.md
 .claude/
+randimg-api-windows-amd64.exe
