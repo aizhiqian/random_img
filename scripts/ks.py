@@ -1,7 +1,13 @@
 import requests
 import json
 import time
+from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+INPUT_FILE = SCRIPT_DIR / 'ks.txt'
+OUTPUT_FILE = SCRIPT_DIR / 'output.txt'
 
 def parse_video_url(url, max_retries=3):
     """
@@ -22,7 +28,7 @@ def parse_video_url(url, max_retries=3):
                     print(f"✅ 解析成功: {url[:50]}")
                     return video_url
                 else:
-                    print(f"❌ 未找到video_url: {url[:50]}")
+                    print(f"❌ 未找到 video_url: {url[:50]}")
                     return None
             else:
                 print(f"❌ 解析失败: {url[:50]} - {data.get('msg', '未知错误')}")
@@ -40,7 +46,7 @@ def parse_video_url(url, max_retries=3):
                 continue
             return None
         except json.JSONDecodeError as e:
-            print(f"❌ JSON解析错误: {url[:50]} - {str(e)}")
+            print(f"❌ JSON 解析错误: {url[:50]} - {str(e)}")
             if attempt < max_retries:
                 print(f"   🔄 准备第 {attempt + 1} 次重试...")
                 time.sleep(2)
@@ -66,19 +72,16 @@ def replace_video_domain(video_url):
         new_parsed = parsed._replace(netloc=new_netloc, query='', fragment='')
         return urlunparse(new_parsed)
     except Exception as e:
-        print(f"⚠️ 域名替换失败: {str(e)}, 返回原URL")
+        print(f"⚠️ 域名替换失败: {str(e)}, 返回原 URL")
         return video_url
 
 def main():
-    input_file = 'ks.txt'
-    output_file = 'output.txt'
-
     # 读取输入文件
     try:
-        with open(input_file, 'r', encoding='utf-8') as f:
+        with INPUT_FILE.open('r', encoding='utf-8') as f:
             urls = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
-        print(f"❌ 错误: 找不到文件 {input_file}")
+        print(f"❌ 错误: 找不到文件 {INPUT_FILE}")
         return
     except Exception as e:
         print(f"❌ 读取文件错误: {str(e)}")
@@ -104,12 +107,12 @@ def main():
 
     # 写入输出文件
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with OUTPUT_FILE.open('w', encoding='utf-8') as f:
             for video_url in video_urls:
                 modified_url = replace_video_domain(video_url)
                 f.write(modified_url + '\n')
         print(f"\n成功! 共解析 {len(video_urls)}/{len(urls)} 个视频URL")
-        print(f"结果已保存到 {output_file}")
+        print(f"结果已保存到 {OUTPUT_FILE}")
     except Exception as e:
         print(f"❌ 写入文件错误: {str(e)}")
 

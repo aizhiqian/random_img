@@ -30,7 +30,7 @@ def deduplicate_file(input_file):
 
         unique_count = len(unique_lines)
         print(f"✅ 去重后行数: {unique_count}")
-        print(f"🗑️  删除重复: {duplicate_count} 行")
+        print(f"🗑️ 删除重复: {duplicate_count} 行")
         print(f"💾 已覆盖原文件: {input_file}")
 
     except FileNotFoundError:
@@ -73,9 +73,9 @@ def deduplicate_path(path):
 def main():
     if len(sys.argv) < 2:
         print("❌ 错误: 必须指定输入文件或目录")
-        print("用法: python deduplicate.py <文件或目录>")
-        print("示例1: python deduplicate.py output.txt")
-        print("示例2: python deduplicate.py ./data/videos")
+        print("用法: python .\\scripts\\deduplicate.py <文件或目录>")
+        print("示例1: python .\\scripts\\deduplicate.py .\\data\\videos\\pc\\cosplay.txt")
+        print("示例2: python .\\scripts\\deduplicate.py .\\data\\videos")
         return
 
     input_path = sys.argv[1]
